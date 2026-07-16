@@ -81,7 +81,6 @@ export class Processor {
   private _arkit_face_sample_rate?: number
   private _arkit_face_channel_names?: string[]
   private _tts2face_sample_rate?: number
-  private _tts2face_channel_names?: string[]
   private _maxBatchId?: number
   private _arkitFaceShape?: number
   private _tts2FaceShape?: number
@@ -456,45 +455,6 @@ export class Processor {
       lastMotionGroup.arkitFaceArrayBufferArray = prevMotionGroup.arkitFaceArrayBufferArray
     }
   }
-  private async _handletts2faceConfig(
-    parsedData: IParsedData,
-    lastMotionGroup: IAvatarMotionGroup,
-    prevMotionGroup: IAvatarMotionGroup,
-    bin: Blob
-  ) {
-    const { data_records = {} } = parsedData
-    const { tts2face } = data_records
-    if (tts2face) {
-      const { channel_names, shape, data_offset, sample_rate } = tts2face as IDataRecords
-      if (channel_names && !this._tts2face_channel_names) {
-        this._tts2face_channel_names = channel_names
-        this._tts2face_sample_rate = sample_rate
-      }
-      if (lastMotionGroup.tts2faceArrayBufferArray === undefined) {
-        if (
-          prevMotionGroup &&
-          prevMotionGroup.tts2faceArrayBufferArray &&
-          prevMotionGroup.batch_id === lastMotionGroup.batch_id
-        ) {
-          lastMotionGroup.tts2faceArrayBufferArray = prevMotionGroup.tts2faceArrayBufferArray
-        } else {
-          lastMotionGroup.tts2faceArrayBufferArray = []
-        }
-        const shapeLength = shape.reduce((acc: number, cur: number) => acc * cur, 4)
-        this._tts2FaceShape = shape[1]
-        const tts2faceBlob = bin.slice(data_offset, data_offset + shapeLength)
-        const tts2faceArrayBuffer = await tts2faceBlob.arrayBuffer()
-        lastMotionGroup.tts2faceArrayBufferArray.push(tts2faceArrayBuffer)
-      }
-    } else if (
-      prevMotionGroup &&
-      prevMotionGroup.tts2faceArrayBufferArray &&
-      lastMotionGroup.batch_id === prevMotionGroup.batch_id
-    ) {
-      lastMotionGroup.tts2faceArrayBufferArray = prevMotionGroup.tts2faceArrayBufferArray
-    }
-  }
-
   private _handleEvents(parsedData: IParsedData) {
     const { events } = parsedData
     if (events && events.length) {

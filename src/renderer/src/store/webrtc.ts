@@ -9,6 +9,7 @@ import { defineStore } from 'pinia'
 import { createWS } from '@/apis'
 import { useAppStore } from './app'
 import { useChatStore } from './chat'
+import { useHiwmStore } from './hiwm'
 import { useMediaStore } from './media'
 import { useVisionStore } from './vision'
 import { watch } from 'vue'
@@ -20,6 +21,25 @@ interface VideoChatState {
   gsLoadPercent: number
   localAvatarRenderer: AvatarHandler | null
   chatDataChannel: RTCDataChannel | null
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isIncomingTextPayload = (
+  value: unknown
+): value is Partial<TextPayload> & Record<string, unknown> => {
+  if (!isRecord(value)) return false
+  if (value.text !== undefined && typeof value.text !== 'string') return false
+  if (value.metadata !== undefined && !isRecord(value.metadata)) return false
+  if (
+    isRecord(value.metadata) &&
+    value.metadata.continue_from_stream !== undefined &&
+    typeof value.metadata.continue_from_stream !== 'string'
+  ) {
+    return false
+  }
+  return true
 }
 
 export const useVideoChatStore = defineStore('videoChatStore', {
@@ -40,27 +60,50 @@ export const useVideoChatStore = defineStore('videoChatStore', {
       const mediaStore = useMediaStore()
       const appStore = useAppStore()
       const chatStore = useChatStore()
+      const hiwmStore = useHiwmStore()
       if (this.streamState === 'closed') {
+        hiwmStore.clearSession()
         appStore.resetChatRecords()
-        this.peerConnection = new RTCPeerConnection(appStore.rtcConfig)
-        this.peerConnection.addEventListener('connectionstatechange', async () => {
-          switch (this.peerConnection!.connectionState) {
+        const mediaStream = mediaStore.stream
+        const hasRealAudio = mediaStream
+          ?.getAudioTracks()
+          .some((track) => track.readyState === 'live')
+        const hasRealVideo = mediaStream
+          ?.getVideoTracks()
+          .some((track) => track.readyState === 'live')
+        if (!mediaStream || !hasRealAudio || !hasRealVideo) {
+          message.error('需要真实摄像头和麦克风轨道，当前未建立连接')
+          return
+        }
+        const peerConnection = new RTCPeerConnection(appStore.rtcConfig)
+        this.peerConnection = peerConnection
+        peerConnection.addEventListener('connectionstatechange', async () => {
+          if (this.peerConnection !== peerConnection) return
+          switch (peerConnection.connectionState) {
             case 'connected':
               this.streamState = StreamState.open
               break
             case 'disconnected':
+            case 'failed':
+            case 'closed':
               this.streamState = StreamState.closed
-              stop(this.peerConnection!)
+              this.webRTCId = ''
+              this.chatDataChannel = null
+              hiwmStore.clearSession()
+              if (peerConnection.connectionState !== 'closed') {
+                stop(peerConnection)
+              }
               break
             default:
               break
           }
         })
         this.streamState = StreamState.waiting
-        await setupWebRTC(mediaStore.stream!, this.peerConnection!, visionState.remoteVideoRef!)
+        await setupWebRTC(mediaStream, peerConnection, visionState.remoteVideoRef!)
           .then(([dataChannel, webRTCId]) => {
             this.streamState = StreamState.open
             this.webRTCId = webRTCId as string
+            hiwmStore.beginSession(this.webRTCId)
             this.chatDataChannel = dataChannel as RTCDataChannel
             this.initChatDataChannel()
 
@@ -75,15 +118,20 @@ export const useVideoChatStore = defineStore('videoChatStore', {
           .catch((e: unknown) => {
             console.info('catching', e)
             this.streamState = StreamState.closed
+            this.webRTCId = ''
+            this.chatDataChannel = null
+            hiwmStore.clearSession()
             const errorMessage = e instanceof Error ? e.message : String(e)
             message.error(errorMessage)
-            message.error('请检查是否超过数字人并发上限')
+            message.error('真实会话连接失败，请检查后端状态与网络配置')
           })
       } else if (this.streamState === 'waiting') {
         // waiting 中不允许操作
       } else {
         stop(this.peerConnection!)
         this.streamState = StreamState.closed
+        this.webRTCId = ''
+        hiwmStore.clearSession()
         appStore.resetChatRecords()
         this.chatDataChannel = null
         chatStore.replying = false
@@ -142,12 +190,30 @@ export const useVideoChatStore = defineStore('videoChatStore', {
     initChatDataChannel() {
       if (!this.chatDataChannel) return
       const chatStore = useChatStore()
+      const hiwmStore = useHiwmStore()
       this.chatDataChannel.addEventListener('message', (event) => {
-        const data = JSON.parse(event.data)
-        const headerName = data?.header?.name as WsProtocol | undefined
+        let data: unknown
+        try {
+          data = JSON.parse(event.data)
+        } catch (error) {
+          console.warn('Invalid RTC data channel message', error)
+          return
+        }
+        if (!isRecord(data)) return
+        const headerName =
+          isRecord(data.header) && typeof data.header.name === 'string'
+            ? data.header.name
+            : undefined
         if (headerName === WsProtocol.EchoHumanText || headerName === WsProtocol.EchoAvatarText) {
-          const payload = (data.payload || {}) as TextPayload
-          if (typeof payload.text !== 'string') return
+          if (!isIncomingTextPayload(data.payload)) return
+          const payload = data.payload
+          if (headerName === WsProtocol.EchoAvatarText) {
+            hiwmStore.consumeAvatarMetadata(payload.metadata)
+            if (isRecord(payload.metadata) && 'hiwm_error' in payload.metadata) {
+              chatStore.replying = false
+            }
+          }
+          if (typeof payload.text !== 'string' || payload.text.length === 0) return
           const role = headerName === WsProtocol.EchoAvatarText ? 'avatar' : 'human'
           chatStore.updateChatRecords({ ...payload, role }, role)
         } else if (

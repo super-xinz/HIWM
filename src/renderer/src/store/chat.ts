@@ -61,9 +61,7 @@ export const useChatStore = defineStore('chatStore', {
       const streamKey =
         (payload?.stream_key as string) || (payload?.request_id as string) || nanoid()
       const id = `${role}-${streamKey}`
-      const continueFromStream = (
-        payload?.metadata as { continue_from_stream?: unknown } | undefined
-      )?.continue_from_stream
+      const continueFromStream = payload.metadata?.continue_from_stream
       if (continueFromStream !== undefined && continueFromStream !== null) {
         const prevIndex = appStore.chatRecords.findLastIndex(
           (item) => item.role === role && item.id !== id
@@ -149,7 +147,7 @@ export const useChatStore = defineStore('chatStore', {
           payload?: Partial<TextPayload>
         }
         const { payload, role } = eventData || {}
-        if (!payload || typeof payload.text !== 'string') return
+        if (!payload || typeof payload.text !== 'string' || payload.text.length === 0) return
 
         this.updateChatRecords(
           { ...payload, role: role === 'human' ? 'human' : 'avatar' },

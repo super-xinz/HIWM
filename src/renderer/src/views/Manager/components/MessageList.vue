@@ -2,7 +2,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ChatMessage } from '../managerTypes'
 import InlineAudioPlayer from '@/components/InlineAudioPlayer.vue'
-import { useClipboard } from '@vueuse/core'
 import { Tooltip } from 'ant-design-vue'
 type DisplayChatMessage = ChatMessage & {
   builderId?: number
@@ -35,10 +34,6 @@ const visibleMessages = computed<DisplayChatMessage[]>(() =>
       }
     })
 )
-
-const messageLabel = (msg: ChatMessage): string => {
-  return msg.role === 'human' ? 'Human' : 'Avatar'
-}
 
 /**
  * 格式化时间戳为可读时间
@@ -89,15 +84,13 @@ watch(
     scrollToBottom()
   }
 )
-const { copy } = useClipboard()
 const copyStreamMeta = (msg: ChatMessage) => {
-  copy(
-    JSON.stringify({
-      timestamp: msg.timestamp,
-      audioStreamMeta: msg.audioStream?.stream_meta,
-      textStreamMeta: msg.textStream?.stream_meta,
-    })
-  )
+  const value = JSON.stringify({
+    timestamp: msg.timestamp,
+    audioStreamMeta: msg.audioStream?.stream_meta,
+    textStreamMeta: msg.textStream?.stream_meta,
+  })
+  void navigator.clipboard.writeText(value)
 }
 const downloadAudio = async (msg: ChatMessage): Promise<void> => {
   if (!msg.audioUrl) return

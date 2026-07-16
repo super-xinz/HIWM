@@ -1,12 +1,6 @@
 import { message } from 'ant-design-vue'
 import { defineStore } from 'pinia'
-import {
-  createSimulatedAudioTrack,
-  createSimulatedVideoTrack,
-  getDevices,
-  getStream,
-  setAvailableDevices,
-} from '@/utils/streamUtils'
+import { getDevices, getStream, setAvailableDevices } from '@/utils/streamUtils'
 import { useVisionStore } from './vision'
 
 const defaultTrackConstraints = {
@@ -68,32 +62,40 @@ export const useMediaStore = defineStore('mediaStore', {
     setTrackConstraints(trackConstraints: TrackConstraints) {
       this.trackConstraints = trackConstraints || defaultTrackConstraints
     },
-    async accessDevice() {
+    async accessDevice(): Promise<boolean> {
       try {
         this.micMuted = false
         this.cameraOff = false
+        this.webcamAccessed = false
         if (!navigator.mediaDevices) {
-          message.error('无法获取媒体设备，请确保用localhost访问或https协议访问')
-          return
+          throw new Error('无法获取真实媒体设备，请使用 localhost 或 HTTPS 访问')
         }
-        await navigator.mediaDevices
-          .getUserMedia({
-            audio: true,
-          })
-          .catch(() => {
-            console.log('no audio permission')
-            this.hasMicPermission = false
-          })
-        await navigator.mediaDevices
-          .getUserMedia({
-            video: true,
-          })
-          .catch(() => {
-            console.log('no video permission')
-            this.hasCameraPermission = false
-          })
+
+        const permissionStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: true,
+        })
+        permissionStream.getTracks().forEach((track) => track.stop())
+        this.hasMicPermission = true
+        this.hasCameraPermission = true
+
         const devices = await getDevices()
         this.devices = devices
+        const hasRealMic = devices.some(
+          (device) => device.kind === 'audioinput' && Boolean(device.deviceId)
+        )
+        const hasRealCamera = devices.some(
+          (device) => device.kind === 'videoinput' && Boolean(device.deviceId)
+        )
+        if (!hasRealMic || !hasRealCamera) {
+          throw new Error(
+            !hasRealMic && !hasRealCamera
+              ? '未检测到真实摄像头和麦克风'
+              : !hasRealMic
+                ? '未检测到真实麦克风'
+                : '未检测到真实摄像头'
+          )
+        }
         const videoDeviceId =
           this.selectedVideoDevice &&
           devices.some((device) => device.deviceId === this.selectedVideoDevice?.deviceId)
@@ -106,10 +108,18 @@ export const useMediaStore = defineStore('mediaStore', {
             : ''
         await this.fillStream(audioDeviceId, videoDeviceId)
         this.webcamAccessed = true
+        return true
       } catch (err: unknown) {
-        console.log(err)
+        this.webcamAccessed = false
+        this.hasCamera = false
+        this.hasMic = false
+        if (err instanceof DOMException && err.name === 'NotAllowedError') {
+          this.hasCameraPermission = false
+          this.hasMicPermission = false
+        }
         const errorMessage = err instanceof Error ? err.message : String(err)
-        message.error(errorMessage)
+        message.error(`无法开始真实会话：${errorMessage}`)
+        return false
       }
     },
     handleCameraOff() {
@@ -147,7 +157,12 @@ export const useMediaStore = defineStore('mediaStore', {
         audioDeviceId = device_id
         this.micMuted = false
       }
-      this.fillStream(audioDeviceId, videoDeviceId)
+      try {
+        await this.fillStream(audioDeviceId, videoDeviceId)
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        message.error(`切换真实媒体设备失败：${errorMessage}`)
+      }
     },
     async updateAvailableDevices() {
       const devices = await getDevices()
@@ -165,7 +180,11 @@ export const useMediaStore = defineStore('mediaStore', {
       this.hasCamera =
         devices.some((device) => device.kind === 'videoinput' && device.deviceId) &&
         this.hasCameraPermission
-      await getStream(
+      if (!this.hasMic || !this.hasCamera) {
+        throw new Error(!this.hasMic ? '未检测到真实麦克风' : '未检测到真实摄像头')
+      }
+
+      const localStream = await getStream(
         audioDeviceId && audioDeviceId !== 'default'
           ? { deviceId: { exact: audioDeviceId } }
           : this.hasMic,
@@ -181,45 +200,45 @@ export const useMediaStore = defineStore('mediaStore', {
             }
           : undefined
       )
-        .then(async (local_stream) => {
-          this.stream = local_stream
-          this.updateAvailableDevices()
-        })
-        .then(() => {
-          const used_devices = this.stream!.getTracks().map(
-            (track) => track.getSettings()?.deviceId
-          )
-          used_devices.forEach((device_id) => {
-            const used_device = devices.find((device) => device.deviceId === device_id)
-            if (used_device && used_device?.kind.includes('video')) {
-              this.selectedVideoDevice = used_device
-            } else if (used_device && used_device?.kind.includes('audio')) {
-              this.selectedAudioDevice = used_device
-            }
-          })
-          !this.selectedVideoDevice && (this.selectedVideoDevice = this.availableVideoDevices[0])
-        })
-        .catch((e) => {
-          console.error('image.no_webcam_support', e)
-        })
-        .finally(() => {
-          if (!this.stream) {
-            this.stream = new MediaStream()
-          }
-          if (!this.stream.getTracks().find((item) => item.kind === 'audio')) {
-            this.stream.addTrack(createSimulatedAudioTrack())
-          }
-          if (!this.stream.getTracks().find((item) => item.kind === 'video')) {
-            this.stream.addTrack(createSimulatedVideoTrack())
-          }
-          this.webcamAccessed = true
-          this.localStream = this.stream
-          if (node) {
-            node.srcObject = this.localStream
-            node.muted = true
-            node?.play()
-          }
-        })
+
+      const hasRealAudioTrack = localStream
+        .getAudioTracks()
+        .some((track) => track.readyState === 'live')
+      const hasRealVideoTrack = localStream
+        .getVideoTracks()
+        .some((track) => track.readyState === 'live')
+      if (!hasRealAudioTrack || !hasRealVideoTrack) {
+        localStream.getTracks().forEach((track) => track.stop())
+        throw new Error(!hasRealAudioTrack ? '真实麦克风轨道不可用' : '真实摄像头轨道不可用')
+      }
+
+      this.stream?.getTracks().forEach((track) => track.stop())
+      this.stream = localStream
+      this.localStream = localStream
+      this.webcamAccessed = true
+      await this.updateAvailableDevices()
+
+      const usedDevices = localStream.getTracks().map((track) => track.getSettings()?.deviceId)
+      usedDevices.forEach((deviceId) => {
+        const usedDevice = devices.find((device) => device.deviceId === deviceId)
+        if (usedDevice?.kind.includes('video')) {
+          this.selectedVideoDevice = usedDevice
+        } else if (usedDevice?.kind.includes('audio')) {
+          this.selectedAudioDevice = usedDevice
+        }
+      })
+      if (!this.selectedVideoDevice) {
+        this.selectedVideoDevice = this.availableVideoDevices[0] || null
+      }
+      if (!this.selectedAudioDevice) {
+        this.selectedAudioDevice = this.availableAudioDevices[0] || null
+      }
+
+      if (node) {
+        node.srcObject = localStream
+        node.muted = true
+        await node.play()
+      }
     },
   },
 })

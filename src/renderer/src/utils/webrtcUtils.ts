@@ -217,8 +217,8 @@ export async function setupWebRTC(
   remoteNode: HTMLVideoElement
 ) {
   //  Send audio-video stream to server
-  stream.getTracks().forEach(async (track) => {
-    const sender = peerConnection.addTrack(track, stream)
+  stream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, stream)
   })
 
   peerConnection.addEventListener('track', (evt) => {

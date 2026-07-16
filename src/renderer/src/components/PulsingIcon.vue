@@ -43,7 +43,7 @@ onUnmounted(() => {
 })
 
 function setupAudioContext() {
-  // @ts-ignore
+  // @ts-ignore -- webkitAudioContext is the legacy Safari implementation.
   audioContext = new (window.AudioContext || window.webkitAudioContext)()
   analyser = audioContext.createAnalyser()
   const mediaStream = props.audioSourceCallback()

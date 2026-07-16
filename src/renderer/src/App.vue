@@ -2,6 +2,7 @@
 import { ConfigProvider } from 'ant-design-vue'
 import { storeToRefs } from 'pinia'
 
+import ApiConfigPanel from '@/components/ApiConfigPanel.vue'
 import WebcamPermission from '@/components/WebcamPermission.vue'
 import { antdLocale, locale } from '@/langs'
 import VideoChat from '@/views/VideoChat/index.vue'
@@ -27,7 +28,9 @@ appState.init()
         backgroundImage: 'none',
       }"
     >
-      <WebcamPermission v-if="!mediaState.webcamAccessed" auto-access />
+      <WebcamPermission v-if="!mediaState.webcamAccessed">
+        <ApiConfigPanel permission-mode />
+      </WebcamPermission>
       <template v-if="chatMode === 'ws'">
         <WSVideoChat />
       </template>
@@ -36,7 +39,9 @@ appState.init()
       </template>
     </div>
     <div v-else class="wrap">
-      <WebcamPermission v-if="!mediaState.webcamAccessed" />
+      <WebcamPermission v-if="!mediaState.webcamAccessed">
+        <ApiConfigPanel permission-mode />
+      </WebcamPermission>
       <template v-if="chatMode === 'ws'">
         <WSVideoChat />
       </template>
@@ -48,10 +53,8 @@ appState.init()
 </template>
 <style lang="less" scoped>
 .wrap {
-  background-image: url(@/assets/background.png);
-  height: calc(max(80vh, 100%));
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
+  min-height: 100vh;
+  background: #07100f;
   position: relative;
   *::-webkit-scrollbar {
     display: none;

@@ -3,7 +3,7 @@ import Iconfont, { Send, HandStop } from '@/components/Iconfont'
 import { insertStringAt } from '@/utils/utils'
 import { useTemplateRef } from 'vue'
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     replying: boolean
   }>(),

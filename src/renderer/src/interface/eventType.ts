@@ -86,7 +86,7 @@ export type SendHumanVideoPayload =
 export type TextMode = 'increment' | 'full_text'
 
 export interface TextMetadata {
-  continue_from_stream: string
+  continue_from_stream?: string
   [key: string]: unknown
 }
 

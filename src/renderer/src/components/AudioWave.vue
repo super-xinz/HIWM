@@ -51,7 +51,7 @@ onUnmounted(() => {
 })
 
 function setupAudioContext() {
-  // @ts-ignore
+  // @ts-ignore -- webkitAudioContext is the legacy Safari implementation.
   audioContext = new (window.AudioContext || window.webkitAudioContext)()
   analyser = audioContext.createAnalyser()
   const streamSource = props.audioSourceCallback()
@@ -96,12 +96,12 @@ function transformIndex(index: number): number {
 <template>
   <div class="gradio-webrtc-waveContainer">
     <div class="gradio-webrtc-boxContainer" :style="{ width: containerWidth }">
-      <template v-for="(_, index) in Array(numBars / 2)" :key="index">
-        <div class="gradio-webrtc-box" />
+      <template v-for="index in numBars / 2" :key="`left-${index}`">
+        <div class="gradio-webrtc-box" :data-index="index" />
       </template>
       <div class="split-container" />
-      <template v-for="(_, index) in Array(numBars / 2)" :key="index">
-        <div class="gradio-webrtc-box" />
+      <template v-for="index in numBars / 2" :key="`right-${index}`">
+        <div class="gradio-webrtc-box" :data-index="index" />
       </template>
     </div>
   </div>

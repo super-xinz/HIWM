@@ -57,7 +57,7 @@
             :key="device.deviceId"
             class="selector"
             @click.stop="
-              (e) => {
+              () => {
                 handleDeviceChange(device.deviceId)
                 micListShow = false
               }

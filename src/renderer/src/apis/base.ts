@@ -1,5 +1,3 @@
-import isElectron from '@renderer/utils/isElectron'
-
 const isDEV = import.meta.env.DEV
 
 if (import.meta.env.USE_SSL === false && !['127.0.0.1', 'localhost'].includes(location.hostname)) {

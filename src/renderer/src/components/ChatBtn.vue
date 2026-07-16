@@ -40,7 +40,7 @@ import { Spin } from 'ant-design-vue'
 import { StreamState } from '@/interface/voiceChat'
 import AudioWave from '@/components/AudioWave.vue'
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     streamState: StreamState
     onStartChat: any

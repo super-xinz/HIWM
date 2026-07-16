@@ -35,8 +35,6 @@ export class AvatarHandler extends EventEmitter {
   private _ws: WS
   private _downloadProgress: (percent: number) => void
   private _loadProgress: (percent: number) => void
-  private _loadPercent = 0
-  private _downloadPercent = 0
   private _processor!: Processor
   private _renderer: { dispose?: () => void } | null = null
   private _audioMute = false
@@ -53,23 +51,17 @@ export class AvatarHandler extends EventEmitter {
     this._rendererType = rendererType
     if (downloadProgress) {
       this._downloadProgress = (percent: number) => {
-        this._downloadPercent = percent
         downloadProgress(percent)
       }
     } else {
-      this._downloadProgress = (percent: number) => {
-        this._downloadPercent = percent
-      }
+      this._downloadProgress = () => {}
     }
     if (loadProgress) {
       this._loadProgress = (percent: number) => {
-        this._loadPercent = percent
         loadProgress(percent)
       }
     } else {
-      this._loadProgress = (percent: number) => {
-        this._loadPercent = percent
-      }
+      this._loadProgress = () => {}
     }
     this._init()
   }
@@ -171,8 +163,6 @@ export class AvatarHandler extends EventEmitter {
     this._stopHeartbeat()
     this._renderer?.dispose?.()
     this.curState = TYVoiceChatState.Idle
-    this._downloadPercent = 0
-    this._loadPercent = 0
     this._processor?.clear()
     this.removeAllListeners()
   }
