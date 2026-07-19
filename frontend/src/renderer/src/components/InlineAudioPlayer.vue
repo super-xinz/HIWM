@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
 import { useSSL, serverOrigin } from '@renderer/apis/base'
+import { readRuntimeControlToken } from '@/utils/projectStorage'
 
 const props = withDefaults(
   defineProps<{
@@ -45,7 +46,7 @@ const loadAudioWithAuth = async (): Promise<void> => {
   const fullUrl = normalizeUrl(props.src)
 
   try {
-    const token = localStorage.getItem('auth_openavatarchat')
+    const token = readRuntimeControlToken()
     const headers: Record<string, string> = {}
     if (token) {
       headers['Authorization'] = `Bearer ${token}`

@@ -68,9 +68,9 @@ export function createOacBridgePlugin() {
       id: CHANNEL_ID,
       meta: {
         id: CHANNEL_ID,
-        label: "HIWM Interaction Demo",
-        selectionLabel: "HIWM Interaction Demo (Webhook)",
-        detailLabel: "HIWM Interaction Demo (Webhook)",
+        label: "HIWM Interaction Engine",
+        selectionLabel: "HIWM Interaction Engine (Webhook)",
+        detailLabel: "HIWM Interaction Engine (Webhook)",
         docsPath: "/channels/oac-bridge",
         blurb: "Connect OpenClaw to the HIWM interaction interface",
         order: 95,

@@ -1,5 +1,5 @@
 """
-FlashHead Avatar Handler for HIWM Interaction Demo.
+FlashHead Avatar Handler for HIWM Interaction Engine.
 
 Integrates SoulX-FlashHead Lite mode as a server-side rendering avatar.
 Input: AVATAR_AUDIO (from TTS) -> Output: AVATAR_VIDEO (512x512) + AVATAR_AUDIO (passthrough)

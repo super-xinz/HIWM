@@ -1,4 +1,4 @@
-name: hiwm-interaction-demo
+name: hiwm-interaction-engine
 
 services:
   coturn:
@@ -16,26 +16,26 @@ services:
     network_mode: host
     restart: unless-stopped
 
-  hiwm-interaction-demo:
-    image: hiwm-interaction-demo:latest
-    container_name: hiwm-interaction-demo
+  hiwm-interaction-engine:
+    image: hiwm-interaction-engine:latest
+    container_name: hiwm-interaction-engine
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
       # - UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
     command: >
-      --config=/root/hiwm-interaction-demo/config/chat_with_openai_compatible_bailian_cosyvoice.yaml
+      --config=/root/hiwm-interaction-engine/config/chat_with_hiwm_zeabur.yaml
     volumes:
-      - ./build:/root/hiwm-interaction-demo/build
-      - ./models:/root/hiwm-interaction-demo/models
-      - ./ssl_certs:/root/hiwm-interaction-demo/ssl_certs
-      - ./config:/root/hiwm-interaction-demo/config
-      - ./.env:/root/hiwm-interaction-demo/.env
+      - ./build:/root/hiwm-interaction-engine/build
+      - ./models:/root/hiwm-interaction-engine/models
+      - ./ssl_certs:/root/hiwm-interaction-engine/ssl_certs
+      - ./config:/root/hiwm-interaction-engine/config
+      - ./.env:/root/hiwm-interaction-engine/.env
       - ./models/musetalk/s3fd-619a316812/:/root/.cache/torch/hub/checkpoints/
-      - ./exp:/root/hiwm-interaction-demo/exp
-      - ./resource:/root/hiwm-interaction-demo/resource
+      - ./exp:/root/hiwm-interaction-engine/exp
+      - ./resource:/root/hiwm-interaction-engine/resource
     ports:
-      - "8282:8282"
+      - "8080:8080"
     networks:
       - nat_network
     shm_size: "2gb"

@@ -1,4 +1,10 @@
 import { defineStore } from 'pinia'
+import {
+  HIWM_TIMELINE_STORAGE_KEY,
+  LEGACY_TIMELINE_STORAGE_KEYS,
+  readMigratedStorage,
+  writeProjectStorage,
+} from '../utils/projectStorage.ts'
 
 export type HiwmEvidenceReference = {
   evidence_id: string
@@ -249,7 +255,6 @@ interface HiwmState extends HiwmTurnState {
   sessionTimelines: Record<string, readonly HiwmTimelineEvent[]>
 }
 
-const TIMELINE_STORAGE_KEY = 'openavatarchat.hiwm.timeline.v1'
 const TIMELINE_STORAGE_VERSION = '1.0'
 const MAX_TIMELINE_EVENTS = 200
 
@@ -987,7 +992,7 @@ function loadTimelineStorage(): {
     return { lastActiveSessionId: '', sessions: {} }
   }
   try {
-    const serialized = window.localStorage.getItem(TIMELINE_STORAGE_KEY)
+    const serialized = readMigratedStorage(HIWM_TIMELINE_STORAGE_KEY, LEGACY_TIMELINE_STORAGE_KEYS)
     if (!serialized) return { lastActiveSessionId: '', sessions: {} }
     const parsed: unknown = JSON.parse(serialized)
     if (
@@ -1276,7 +1281,11 @@ export const useHiwmStore = defineStore('hiwmStore', {
         sessions: this.sessionTimelines,
       }
       try {
-        window.localStorage.setItem(TIMELINE_STORAGE_KEY, JSON.stringify(envelope))
+        writeProjectStorage(
+          HIWM_TIMELINE_STORAGE_KEY,
+          JSON.stringify(envelope),
+          LEGACY_TIMELINE_STORAGE_KEYS
+        )
       } catch (error) {
         console.warn('Unable to persist HIWM timeline', error)
       }

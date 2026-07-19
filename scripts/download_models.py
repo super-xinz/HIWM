@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unified model download script for HIWM Interaction Demo.
+Unified model download script for HIWM Interaction Engine.
 
 A Python equivalent of the individual download scripts
 (download_liteavatar_weights.sh, download_musetalk_weights.sh,
@@ -456,7 +456,7 @@ def resolve_source(source, handler_key):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Unified model download tool for HIWM Interaction Demo. "
+        description="Unified model download tool for HIWM Interaction Engine. "
                     "Reads config YAML(s) or accepts explicit handler names to "
                     "download all required model files.",
         formatter_class=argparse.RawDescriptionHelpFormatter,

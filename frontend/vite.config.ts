@@ -57,6 +57,11 @@ export default defineConfig({
             changeOrigin: true,
             secure: false,
           },
+          '/api': {
+            target: proxyTarget,
+            changeOrigin: true,
+            secure: false,
+          },
           '/openavatarchat': {
             target: proxyTarget,
             changeOrigin: true,

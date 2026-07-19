@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ChatMessage } from '../managerTypes'
 import InlineAudioPlayer from '@/components/InlineAudioPlayer.vue'
 import { Tooltip } from 'ant-design-vue'
+import { readRuntimeControlToken } from '@/utils/projectStorage'
 type DisplayChatMessage = ChatMessage & {
   builderId?: number
   streamId?: number
@@ -105,7 +106,7 @@ const downloadAudio = async (msg: ChatMessage): Promise<void> => {
   }
 
   try {
-    const token = localStorage.getItem('auth_openavatarchat')
+    const token = readRuntimeControlToken()
     const headers: Record<string, string> = {}
     if (token) {
       headers['Authorization'] = `Bearer ${token}`

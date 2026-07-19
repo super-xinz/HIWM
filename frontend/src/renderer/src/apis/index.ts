@@ -1,14 +1,15 @@
 import { WS } from '@/helpers/ws'
+import { readRuntimeControlToken } from '@/utils/projectStorage'
 import { fetch, serverHost, serverOrigin, useSSL } from './base'
 
 export { fetch }
 
 export function initConfig(): Promise<Response> {
-  return fetch('/openavatarchat/initconfig')
+  return fetch('/api/v1/runtime/config')
 }
 
 export function configureRuntimeApiKey(apiKey: string): Promise<Response> {
-  return fetch('/openavatarchat/runtime-api-key', {
+  return fetch('/api/v1/runtime/api-key', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ api_key: apiKey }),
@@ -32,7 +33,7 @@ export function webrtcClose(webrtcId: string): Promise<Response> {
 }
 
 export function createWS(ws_route: string, webRTCId: string): WS {
-  const token = localStorage.getItem('auth_openavatarchat')
+  const token = readRuntimeControlToken()
   let url = `${useSSL ? 'wss' : 'ws'}://${serverHost}${ws_route}/${webRTCId}`
   if (token) {
     // 浏览器 WebSocket API 不支持自定义 headers，通过 URL 查询参数传递 token
@@ -45,7 +46,7 @@ export function createWS(ws_route: string, webRTCId: string): WS {
   return ws
 }
 export function createDataToolWS(): WS {
-  const token = localStorage.getItem('auth_openavatarchat')
+  const token = readRuntimeControlToken()
   let url = `${useSSL ? 'wss' : 'ws'}://${serverHost}/ws/manager/data_tool`
   if (token) {
     url += `?token=${encodeURIComponent(token)}`

@@ -17,6 +17,7 @@ from service.service_utils.logger_utils import config_loggers
 from service.service_utils.service_config_loader import load_configs
 from service.service_utils.ssl_helpers import create_ssl_context
 from service.frontend_service import require_runtime_control_access
+from project_identity import PROJECT_NAME, PROJECT_VERSION
 
 project_dir = DirectoryInfo.get_project_dir()
 if project_dir not in sys.path:
@@ -27,7 +28,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, help="service host address")
     parser.add_argument("--port", type=int, help="service host port")
-    parser.add_argument("--config", type=str, default="config/chat_with_openai_compatible_bailian_cosyvoice.yaml", help="config file to use")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="config/chat_with_hiwm_mac.yaml",
+        help="config file to use",
+    )
     parser.add_argument("--env", type=str, default="default", help="environment to use in config file")
     return parser.parse_args()
 
@@ -59,7 +65,12 @@ class HIWMWebServer(uvicorn.Server):
 
 def setup_demo():
     """设置 FastAPI 应用和 Gradio 界面"""
-    app = FastAPI(docs_url=None, redoc_url=None)
+    app = FastAPI(
+        title=PROJECT_NAME,
+        version=PROJECT_VERSION,
+        docs_url=None,
+        redoc_url=None,
+    )
 
     @app.middleware("http")
     async def protect_remote_webrtc_control(request: Request, call_next):

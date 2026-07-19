@@ -1,8 +1,8 @@
-# HIWM Interaction Demo
+# HIWM Interaction Engine
 
 **A consent-first interaction-decision demo for the Human Interaction World Model (HIWM) concept.**
 
-[中文](README.md) · [Runtime architecture](docs/guides/hiwm-runtime.md) · [Research definition](docs/research/hiwm-definition.zh-CN.md) · [Acceptance record](docs/reports/acceptance-2026-07-18.zh-CN.md)
+[中文](README.md) · [Architecture](docs/guides/project-architecture.zh-CN.md) · [Runtime](docs/guides/hiwm-runtime.md) · [API v1](docs/guides/api-v1.md) · [0.2.0 acceptance](docs/reports/acceptance-2026-07-19-v0.2.zh-CN.md)
 
 The project combines real-time audio/video, speech recognition, structured interaction prediction, speech synthesis, and optional avatar pipelines. For each finalized user turn it freezes bounded, cited observations, asks for exactly three candidate communication actions, scores goal progress, expected information gain, risk, and uncertainty, durably locks the selected prediction before execution, and evaluates it against the next real response.
 
@@ -17,6 +17,8 @@ The project combines real-time audio/video, speech recognition, structured inter
 | Vue/Electron client | `frontend/` | consent flow, media controls, derived evidence, three-branch decisions, event replay |
 
 The customized frontend is vendored into this repository so a normal commit contains both projects. Third-party algorithms remain pinned Git submodules.
+
+Since `0.2.0`, public integrations use the HIWM-owned `/api/v1` namespace and `hiwm.*` browser-storage keys. Legacy endpoints and stored data have compatibility migration. A read-only robot adapter exposes idempotent speech commands derived only from verified prediction-ledger records; arbitrary physical motion is intentionally out of scope.
 
 ## Quick start on macOS
 
@@ -48,6 +50,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes. Never commit c
 
 ## Status and provenance
 
-Version `0.1.0` is a research prototype. The hardened cloud HIWM path has not yet been re-run as a paid end-to-end validation, and real camera/microphone/speaker behavior still requires a consenting device test.
+Version `0.2.0` is a research prototype. The hardened cloud HIWM path has not yet been re-run as a paid end-to-end validation, and real camera/microphone/speaker behavior still requires a consenting device test.
 
 This project is materially modified from [OpenAvatarChat](https://github.com/HumanAIGC-Engineering/OpenAvatarChat) `0.6.0` at `dcfba11` and [OpenAvatarChat-WebUI](https://github.com/HumanAIGC-Engineering/OpenAvatarChat-WebUI) at `a6182af`. It is not an official upstream release. See [UPSTREAM.md](UPSTREAM.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and the [Apache-2.0 license](LICENSE).

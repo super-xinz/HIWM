@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from src.engine_utils.directory_info import DirectoryInfo
+from project_identity import API_PREFIX
 
 InitConfigSource = Union[Dict[str, Any], Callable[[], Dict[str, Any]]]
 
@@ -28,11 +29,14 @@ class FrontendRegistrationOptions:
     mount_path: str = "/ui"
     root_route: str = "/"
     redirect_target: str = "/ui/index.html"
-    init_config_route: str = "/openavatarchat/initconfig"
+    init_config_route: str = f"{API_PREFIX}/runtime/config"
+    legacy_init_config_routes: tuple[str, ...] = (
+        "/openavatarchat/initconfig",
+    )
     frontend_dist_relative_path: str = "frontend/dist"
     gradio_placeholder_html: str = (
         """
-        <h1 id="hiwm-interaction-demo">
+        <h1 id="hiwm-interaction-engine">
            The Gradio page is no longer available. Please use the HIWM web client instead.
         </h1>
         """
@@ -69,10 +73,25 @@ def register_frontend(
     opts = options or FrontendRegistrationOptions()
     frontend_path = _resolve_frontend_path(opts)
 
-    @app.get(opts.init_config_route)
     async def init_config_endpoint():
         config = _materialize_init_config(init_config)
         return JSONResponse(status_code=200, content=config)
+
+    app.add_api_route(
+        opts.init_config_route,
+        init_config_endpoint,
+        methods=["GET"],
+        name="hiwm_runtime_config",
+    )
+    for legacy_route in opts.legacy_init_config_routes:
+        app.add_api_route(
+            legacy_route,
+            init_config_endpoint,
+            methods=["GET"],
+            name=f"legacy_hiwm_runtime_config_{legacy_route}",
+            deprecated=True,
+            include_in_schema=False,
+        )
 
     if frontend_path.exists():
         logger.info(f"Serving frontend from {frontend_path}")

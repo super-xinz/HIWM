@@ -1,8 +1,8 @@
-# HIWM Interaction Demo
+# HIWM Interaction Engine
 
 **人际互动世界模型（Human Interaction World Model, HIWM）的交互决策演示平台。**
 
-[English](README.en.md) · [运行架构](docs/guides/hiwm-runtime.md) · [研究定义](docs/research/hiwm-definition.zh-CN.md) · [验收记录](docs/reports/acceptance-2026-07-18.zh-CN.md)
+[English](README.en.md) · [项目架构](docs/guides/project-architecture.zh-CN.md) · [运行架构](docs/guides/hiwm-runtime.md) · [API v1](docs/guides/api-v1.md) · [0.2.0 验收](docs/reports/acceptance-2026-07-19-v0.2.zh-CN.md)
 
 本项目把实时音视频、语音识别、结构化交互推演、语音合成和可选数字人管线组合成一个可运行的研究原型。系统基于用户明确同意采集当前会话的有限证据，为每轮对话生成三条候选沟通动作，依据目标、信息增益、风险与不确定性选择一条，在执行前写入可校验账本，并用下一轮实际回应更新工作信念。
 
@@ -11,7 +11,7 @@
 
 ## 当前状态
 
-- 项目版本：`0.1.0`
+- 项目版本：`0.2.0`
 - 默认本地环境：Apple Silicon macOS，Python 3.11，Node.js 22
 - 默认云服务：阿里云 Model Studio / DashScope（ASR、结构化多模态推演、TTS）
 - 当前验收：后端、前端、隐私边界和本地闭环已有自动化覆盖；真实摄像头、麦克风、扬声器仍需人工设备验收
@@ -23,6 +23,8 @@
 | --- | --- | --- | --- |
 | 服务端 | 仓库根目录、`src/` | Python、FastAPI、WebRTC | ASR、HIWM 推演与规划、预测锁、TTS、会话和审计 API |
 | 交互前端 | `frontend/` | Vue 3、TypeScript、Vite、Electron | 知情同意、摄像头/麦克风、派生证据、三分支决策与事件回放 |
+
+公共集成从 `0.2.0` 起使用 HIWM 自有的 `/api/v1` 命名空间和 `hiwm.*` 浏览器存储键。旧接口与旧存储会兼容迁移，现有用户无需手动清除会话数据。外部实体机器人可以轮询由已校验预测账本派生的幂等语音命令；当前不开放任意运动控制。
 
 第三方算法仍以固定提交的 Git 子模块保留在各 Handler 路径中。前端是本项目的一部分，不再连接原 WebUI 子模块，因此一次提交即可完整包含前后端改动。
 
@@ -87,6 +89,9 @@ npm run docs:build
 ## 文档
 
 - [HIWM 运行架构、隐私边界与数据位置](docs/guides/hiwm-runtime.md)
+- [项目架构、数据流与选择性演进边界](docs/guides/project-architecture.zh-CN.md)
+- [HIWM API v1 与机器人适配协议](docs/guides/api-v1.md)
+- [0.2.0 自动化验收记录](docs/reports/acceptance-2026-07-19-v0.2.zh-CN.md)
 - [macOS 安装与启动](docs/guides/macos-setup.md)
 - [HIWM 正式定义与研究依据](docs/research/hiwm-definition.zh-CN.md)
 - [正式 Demo 设计方案](docs/research/hiwm-demo-design.zh-CN.md)
@@ -95,6 +100,6 @@ npm run docs:build
 
 ## 上游与许可证
 
-本项目 `0.1.0` 基于 [OpenAvatarChat](https://github.com/HumanAIGC-Engineering/OpenAvatarChat) `0.6.0`（基础提交 `dcfba11`）及 [OpenAvatarChat-WebUI](https://github.com/HumanAIGC-Engineering/OpenAvatarChat-WebUI)（基础提交 `a6182af`）开发，并进行了实质性修改。本项目不隶属于上述上游项目，也不代表其官方版本。
+本项目最初基于 [OpenAvatarChat](https://github.com/HumanAIGC-Engineering/OpenAvatarChat) `0.6.0`（基础提交 `dcfba11`）及 [OpenAvatarChat-WebUI](https://github.com/HumanAIGC-Engineering/OpenAvatarChat-WebUI)（基础提交 `a6182af`）开发，并进行了实质性修改。本项目不隶属于上述上游项目，也不代表其官方版本。
 
 根项目继续使用 [Apache License 2.0](LICENSE)。上游来源、原作者引用和修改范围见 [UPSTREAM.md](UPSTREAM.md)，第三方组件及各自许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。模型权重、人物素材和云服务受各自条款约束，不因本仓库许可证自动获得授权。

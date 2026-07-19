@@ -9,7 +9,7 @@ set -e
 IMAGE_TAG=""
 NO_CACHE=""
 PUSH_REGISTRY=""
-CONFIG_PATH="config/chat_with_openai_compatible_bailian_cosyvoice.yaml"
+CONFIG_PATH="config/chat_with_hiwm_zeabur.yaml"
 
 # Colors for output
 RED='\033[0;31m'
@@ -91,7 +91,7 @@ while [[ "$#" -gt 0 ]]; do
         -h | --help )
             echo "Usage: $0 [OPTIONS]"
             echo "Options:"
-            echo "  --tag TAG         Docker镜像标签 (默认: hiwm-interaction-demo:VERSION)"
+            echo "  --tag TAG         Docker镜像标签 (默认: hiwm-interaction-engine:VERSION)"
             echo "  --no-cache        不使用Docker构建缓存"
             echo "  --push REGISTRY   构建后推送到指定注册表"
             echo "  --config PATH     运行时使用的配置文件路径"
@@ -125,7 +125,7 @@ fi
 
 # Set default image tag if not provided
 if [ -z "$IMAGE_TAG" ]; then
-    IMAGE_TAG="hiwm-interaction-demo:latest"
+    IMAGE_TAG="hiwm-interaction-engine:latest"
 fi
 
 # Get build metadata
@@ -184,10 +184,10 @@ if eval $BUILD_CMD; then
     echo "启动容器:"
     echo "docker run --rm --gpus all -it \\"
     echo "  --network=host \\"
-    echo "  -v \$(pwd)/build:/root/hiwm-interaction-demo/build \\"
-    echo "  -v \$(pwd)/models:/root/hiwm-interaction-demo/models \\"
-    echo "  -v \$(pwd)/ssl_certs:/root/hiwm-interaction-demo/ssl_certs \\"
-    echo "  -v \$(pwd)/config:/root/hiwm-interaction-demo/config \\"
+    echo "  -v \$(pwd)/build:/root/hiwm-interaction-engine/build \\"
+    echo "  -v \$(pwd)/models:/root/hiwm-interaction-engine/models \\"
+    echo "  -v \$(pwd)/ssl_certs:/root/hiwm-interaction-engine/ssl_certs \\"
+    echo "  -v \$(pwd)/config:/root/hiwm-interaction-engine/config \\"
     echo "  -v \$(pwd)/models/musetalk/s3fd-619a316812/:/root/.cache/torch/hub/checkpoints/ \\"
     echo "  -p 8282:8282 \\"
     echo "  \"${IMAGE_TAG}\" \\"

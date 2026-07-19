@@ -1,4 +1,4 @@
-# HIWM Interaction Demo on Apple Silicon macOS
+# HIWM Interaction Engine on Apple Silicon macOS
 
 The upstream 0.6.0 CUDA profiles target NVIDIA Linux/Windows. This checkout
 adds macOS profiles that keep the upstream RTC/WebUI architecture without a

@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress'
 const repository = process.env.GITHUB_REPOSITORY
 
 export default defineConfig({
-  title: 'HIWM Interaction Demo',
+  title: 'HIWM Interaction Engine',
   description: '人际互动世界模型的交互决策演示平台',
   base: (process.env.VITEPRESS_BASE as '/' | `/${string}/`) || '/',
   srcExclude: ['upstream/**'],
@@ -15,8 +15,9 @@ export default defineConfig({
       { text: '首页', link: '/' },
       { text: '快速开始', link: '/guides/macos-setup' },
       { text: '运行架构', link: '/guides/hiwm-runtime' },
+      { text: 'API v1', link: '/guides/api-v1' },
       { text: '研究定义', link: '/research/hiwm-definition.zh-CN' },
-      { text: '验收记录', link: '/reports/acceptance-2026-07-18.zh-CN' },
+      { text: '验收记录', link: '/reports/acceptance-2026-07-19-v0.2.zh-CN' },
     ],
     sidebar: {
       '/guides/': [
@@ -25,6 +26,8 @@ export default defineConfig({
           items: [
             { text: 'macOS 安装与启动', link: '/guides/macos-setup' },
             { text: 'HIWM 运行架构', link: '/guides/hiwm-runtime' },
+            { text: '项目架构与演进', link: '/guides/project-architecture.zh-CN' },
+            { text: 'HIWM API v1', link: '/guides/api-v1' },
           ],
         },
       ],
@@ -50,7 +53,7 @@ export default defineConfig({
       ? [{ icon: 'github', link: `https://github.com/${repository}` }]
       : [],
     footer: {
-      message: 'Apache-2.0 · 基于 OpenAvatarChat 与 OpenAvatarChat-WebUI 的实质修改版本',
+      message: 'HIWM Interaction Engine · Apache-2.0',
       copyright: '上游归属与第三方许可证见仓库 UPSTREAM.md 和 THIRD_PARTY_NOTICES.md',
     },
   },

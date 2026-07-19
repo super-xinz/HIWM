@@ -260,7 +260,9 @@ from service.frontend_service import (
     runtime_control_auth_required,
     register_frontend,
     register_hiwm_replay,
+    register_robot_action_api,
 )
+from project_identity import API_PREFIX
 from service.rtc_service.rtc_provider import RTCProvider
 from service.rtc_service.rtc_stream import RtcStream
 from chat_engine.data_models.chat_signal_type import ChatSignalType
@@ -558,7 +560,12 @@ class ClientHandlerRtc(ClientHandlerBase):
             getattr(handler_manager, "handler_registries", {}).get("HIWM")
         )
 
-        @fastapi.post("/openavatarchat/runtime-api-key")
+        @fastapi.post(
+            "/openavatarchat/runtime-api-key",
+            deprecated=True,
+            include_in_schema=False,
+        )
+        @fastapi.post(f"{API_PREFIX}/runtime/api-key")
         async def set_runtime_api_key(payload: RuntimeApiKeyRequest, request: Request):
             require_runtime_control_access(request)
             try:
@@ -594,6 +601,11 @@ class ClientHandlerRtc(ClientHandlerBase):
                     "client_perception_transport": (
                         "derived_features_only" if hiwm_enabled else None
                     ),
+                    "robot_action_api": (
+                        f"{API_PREFIX}/robot" if hiwm_enabled else None
+                    ),
+                    "robot_command_types": ["speak"] if hiwm_enabled else [],
+                    "physical_motion_enabled": False,
                     "raw_media_persisted": False,
                 },
                 "privacy": {
@@ -633,6 +645,7 @@ class ClientHandlerRtc(ClientHandlerBase):
         )
         if hiwm_enabled:
             register_hiwm_replay(fastapi, handler_manager)
+            register_robot_action_api(fastapi, handler_manager)
 
     def on_setup_app(self, app: FastAPI, ui: gradio.blocks.Block, parent_block: Optional[gradio.blocks.Block] = None):
         avatar_config = {}

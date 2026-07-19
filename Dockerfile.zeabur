@@ -10,8 +10,9 @@ RUN pnpm run build
 
 FROM python:3.11-slim-bookworm AS runtime
 
-LABEL org.opencontainers.image.title="HIWM Interaction Demo" \
+LABEL org.opencontainers.image.title="HIWM Interaction Engine" \
       org.opencontainers.image.description="CPU deployment for Zeabur" \
+      org.opencontainers.image.source="https://github.com/super-xinz/HIWM" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 ENV PYTHONUNBUFFERED=1 \

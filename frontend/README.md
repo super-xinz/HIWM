@@ -1,6 +1,6 @@
 # HIWM Interaction Web
 
-Vue 3 + TypeScript + Vite/Electron client for HIWM Interaction Demo. It is maintained in the same repository as the Python service and is served from `frontend/dist/` at `/ui` after a production build.
+Vue 3 + TypeScript + Vite/Electron client for HIWM Interaction Engine. It is maintained in the same repository as the Python service and is served from `frontend/dist/` at `/ui` after a production build.
 
 ## Responsibilities
 
@@ -11,7 +11,7 @@ Vue 3 + TypeScript + Vite/Electron client for HIWM Interaction Demo. It is maint
 - exactly three predicted action branches, selected-action explanation, and derived-event replay;
 - session and runtime manager views.
 
-Raw audio, video, images, and full landmark arrays are not written to the replay store by default. Compatibility endpoints such as `/openavatarchat/initconfig` and existing local-storage keys retain their historic names so upgrades do not silently break clients.
+Raw audio, video, images, and full landmark arrays are not written to the replay store by default. New clients use `/api/v1` and `hiwm.*` storage keys. Pre-0.2 endpoint aliases remain available, while old browser keys are migrated once so upgrades do not silently discard existing sessions.
 
 ## Development
 

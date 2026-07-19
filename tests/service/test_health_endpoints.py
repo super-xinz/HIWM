@@ -51,3 +51,18 @@ def test_liveness_is_ok_and_readiness_tracks_engine_state(monkeypatch, tmp_path)
         assert response.json() == {
             "detail": "Chat engine is not ready yet."
         }
+
+
+def test_version_reports_hiwm_project_identity(monkeypatch, tmp_path):
+    _engine, app = _initialized_app(monkeypatch, tmp_path)
+
+    with TestClient(app) as client:
+        response = client.get("/version")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "name": "HIWM Interaction Engine",
+        "slug": "hiwm",
+        "version": "0.2.0",
+        "api_version": "v1",
+    }

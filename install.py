@@ -64,7 +64,7 @@ MAX_COMPILE_JOBS = 4
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="One-stop dependency installer for HIWM Interaction Demo. "
+        description="One-stop dependency installer for HIWM Interaction Engine. "
                     "Reads config YAML(s) to determine which handlers are needed, "
                     "then installs all dependencies in one pass."
     )

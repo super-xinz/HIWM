@@ -14,6 +14,7 @@ import { useAppStore } from '@/store/app'
 import { useMediaStore } from '@/store/media'
 import type { AnalysisConsentRecord } from '@/store/perception'
 import { isDashscopeRuntimeKeyReady, isDashscopeRuntimeKeyRequired } from '@/interface/apiConfig'
+import { readRuntimeControlToken } from '@/utils/projectStorage'
 
 const props = withDefaults(
   defineProps<{
@@ -44,9 +45,7 @@ const { apiConfig, apiConfigStatus } = storeToRefs(appState)
 const { permissionError } = storeToRefs(mediaState)
 
 const apiKey = ref('')
-const accessToken = ref(
-  typeof window === 'undefined' ? '' : localStorage.getItem('auth_openavatarchat') || ''
-)
+const accessToken = ref(typeof window === 'undefined' ? '' : readRuntimeControlToken())
 const revealKey = ref(false)
 
 const keyRequired = computed(() => isDashscopeRuntimeKeyRequired(apiConfig.value))

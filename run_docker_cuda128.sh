@@ -18,7 +18,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Determine config file path
-CONFIG_FILE="${CONFIG_PATH:-config/chat_with_openai_compatible_bailian_cosyvoice.yaml}"
+CONFIG_FILE="${CONFIG_PATH:-config/chat_with_hiwm_zeabur.yaml}"
 
 # Check for AvatarMusetalk module and set environment variables（if Musetalk is used, set PYTORCH_JIT=0）
 if grep -q "AvatarMusetalk:" "$CONFIG_FILE" 2>/dev/null && grep -q "module: avatar/musetalk/avatar_handler_musetalk" "$CONFIG_FILE" 2>/dev/null; then
@@ -28,19 +28,19 @@ else
     echo "No AvatarMusetalk module detected in config, skipping PYTORCH_JIT environment variable"
 fi
 
-docker run --rm --gpus all -it --name hiwm-interaction-demo \
+docker run --rm --gpus all -it --name hiwm-interaction-engine \
     --network=host \
     "${ENV_VARS[@]}" \
-    -v "$(pwd)"/build:/root/hiwm-interaction-demo/build \
-    -v "$(pwd)"/models:/root/hiwm-interaction-demo/models \
-    -v "$(pwd)"/ssl_certs:/root/hiwm-interaction-demo/ssl_certs \
-    -v "$(pwd)"/config:/root/hiwm-interaction-demo/config \
-    -v "$(pwd)"/.env:/root/hiwm-interaction-demo/.env \
+    -v "$(pwd)"/build:/root/hiwm-interaction-engine/build \
+    -v "$(pwd)"/models:/root/hiwm-interaction-engine/models \
+    -v "$(pwd)"/ssl_certs:/root/hiwm-interaction-engine/ssl_certs \
+    -v "$(pwd)"/config:/root/hiwm-interaction-engine/config \
+    -v "$(pwd)"/.env:/root/hiwm-interaction-engine/.env \
     -v "$(pwd)"/models/musetalk/s3fd-619a316812/:/root/.cache/torch/hub/checkpoints/ \
-    -v "$(pwd)"/exp:/root/hiwm-interaction-demo/exp \
-    -v "$(pwd)"/resource:/root/hiwm-interaction-demo/resource \
+    -v "$(pwd)"/exp:/root/hiwm-interaction-engine/exp \
+    -v "$(pwd)"/resource:/root/hiwm-interaction-engine/resource \
     -e NVIDIA_VISIBLE_DEVICES=all \
     -e NVIDIA_DRIVER_CAPABILITIES=compute,video,utility \
-    -p 8282:8282 \
-    hiwm-interaction-demo:latest \
-    --config "${CONFIG_PATH:-config/chat_with_openai_compatible_bailian_cosyvoice.yaml}"
+    -p 8080:8080 \
+    hiwm-interaction-engine:latest \
+    --config "${CONFIG_PATH:-config/chat_with_hiwm_zeabur.yaml}"

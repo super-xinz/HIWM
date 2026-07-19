@@ -1,14 +1,14 @@
-appId: org.hiwm.interaction-demo
-productName: HIWM Interaction Demo
+appId: org.hiwm.interaction-engine
+productName: HIWM Interaction Engine
 directories:
   output: dist-electron/release
   buildResources: build
 files:
-  - "dist-electron/out/**/*"
+  - 'dist-electron/out/**/*'
 asarUnpack:
   - resources/**
 win:
-  executableName: hiwm-interaction-demo
+  executableName: hiwm-interaction-engine
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -29,7 +29,7 @@ linux:
     - AppImage
     - snap
     - deb
-  maintainer: HIWM Interaction Demo contributors
+  maintainer: HIWM Interaction Engine contributors
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}

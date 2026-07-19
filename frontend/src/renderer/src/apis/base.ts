@@ -1,3 +1,5 @@
+import { readRuntimeControlToken } from '@/utils/projectStorage'
+
 const isDEV = import.meta.env.DEV
 
 if (import.meta.env.USE_SSL === false && !['127.0.0.1', 'localhost'].includes(location.hostname)) {
@@ -18,7 +20,7 @@ export const serverHost = isDEV ? location.host : `${serverIP}:${serverPort}`
 export const serverProtocol = useSSL === undefined ? location.protocol : useSSL ? 'https' : 'http'
 export const serverOrigin = `${serverProtocol}://${serverHost}`
 export function fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const token = localStorage.getItem('auth_openavatarchat')
+  const token = readRuntimeControlToken()
   const headers = new Headers(init?.headers || {})
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)

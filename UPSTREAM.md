@@ -1,6 +1,6 @@
 # Upstream provenance
 
-HIWM Interaction Demo is a materially modified derivative project. A fresh repository history is used so its current development history is not confused with the upstream projects' contributor graph; this does not remove or replace upstream authorship.
+HIWM Interaction Engine is a materially modified derivative project. A fresh repository history is used so its current development history is not confused with the upstream projects' contributor graph; this does not remove or replace upstream authorship.
 
 ## Base projects
 
@@ -19,7 +19,7 @@ The original repositories, their commit histories, and their contributor pages a
 - Integrated the customized Web UI into one repository and moved it to the top-level `frontend/` project.
 - Replaced upstream-facing README, repository metadata, documentation navigation, and release identity.
 
-Compatibility identifiers such as `/openavatarchat/*`, selected configuration keys, and the `oac-bridge` channel ID may remain where changing them would break existing clients or stored browser data. Their presence is not a claim that this repository is an official OpenAvatarChat release.
+Pre-0.2 compatibility identifiers such as `/openavatarchat/*`, selected configuration keys, and the `oac-bridge` channel ID may remain where changing them would break existing integrations. New product APIs and browser storage use `/api/v1` and `hiwm.*`. Compatibility names do not imply that this repository is an official OpenAvatarChat release.
 
 ## Upstream citation
 

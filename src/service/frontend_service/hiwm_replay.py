@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from engine_utils.directory_info import DirectoryInfo
 from handlers.hiwm.ledger import ImmutableJSONLLedger
 from handlers.hiwm.models import LockedPredictionRecord, LockedSafetyFallbackRecord
+from project_identity import API_PREFIX
 from .runtime_control import require_runtime_control_access, runtime_control_auth_required
 
 
@@ -82,7 +83,12 @@ def load_verified_timeline(root: Path, session_id: str) -> list[dict[str, Any]]:
 def register_hiwm_replay(app: FastAPI, handler_manager: Any) -> None:
     """Register bounded, local-session replay and deletion endpoints."""
 
-    @app.get("/openavatarchat/hiwm/sessions/{session_id}/timeline")
+    @app.get(
+        "/openavatarchat/hiwm/sessions/{session_id}/timeline",
+        deprecated=True,
+        include_in_schema=False,
+    )
+    @app.get(f"{API_PREFIX}/sessions/{{session_id}}/timeline")
     async def get_hiwm_timeline(session_id: str, request: Request):
         if runtime_control_auth_required():
             require_runtime_control_access(request)
@@ -102,7 +108,12 @@ def register_hiwm_replay(app: FastAPI, handler_manager: Any) -> None:
             }
         )
 
-    @app.delete("/openavatarchat/hiwm/sessions/{session_id}")
+    @app.delete(
+        "/openavatarchat/hiwm/sessions/{session_id}",
+        deprecated=True,
+        include_in_schema=False,
+    )
+    @app.delete(f"{API_PREFIX}/sessions/{{session_id}}")
     async def delete_hiwm_session(session_id: str, request: Request):
         if runtime_control_auth_required():
             require_runtime_control_access(request)

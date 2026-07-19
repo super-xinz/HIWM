@@ -1,5 +1,5 @@
 {
-  "name": "hiwm-interaction-demo-docs",
+  "name": "hiwm-interaction-engine-docs",
   "private": true,
   "scripts": {
     "docs:dev": "vitepress dev",

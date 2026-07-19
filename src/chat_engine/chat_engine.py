@@ -17,9 +17,13 @@ from chat_engine.core.logic_manager import LogicManager
 
 from chat_engine.data_models.chat_engine_config_data import ChatEngineConfigModel
 from chat_engine.data_models.session_info_data import SessionInfoData
+from project_identity import (
+    API_VERSION,
+    PROJECT_NAME,
+    PROJECT_SLUG,
+    PROJECT_VERSION,
+)
 
-
-OPEN_AVATAR_CHAT_VERSION = "0.6.0"
 
 
 @dataclass
@@ -45,7 +49,12 @@ class ChatEngine(object):
         if app:
             @app.get("/version")
             async def root():
-                return {"version": OPEN_AVATAR_CHAT_VERSION}
+                return {
+                    "name": PROJECT_NAME,
+                    "slug": PROJECT_SLUG,
+                    "version": PROJECT_VERSION,
+                    "api_version": API_VERSION,
+                }
 
             @app.get("/liveness")
             async def check_liveness():

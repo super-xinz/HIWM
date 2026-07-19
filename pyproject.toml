@@ -1,6 +1,6 @@
 [project]
-name = "hiwm-interaction-demo"
-version = "0.1.0"
+name = "hiwm-interaction-engine"
+version = "0.2.0"
 description = "A consent-first Human Interaction World Model interaction-decision demo."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -58,6 +58,8 @@ dependencies = [
 ]
 
 [project.urls]
+"Repository" = "https://github.com/super-xinz/HIWM"
+"Documentation" = "https://super-xinz.github.io/HIWM/"
 "Upstream service" = "https://github.com/HumanAIGC-Engineering/OpenAvatarChat"
 "Upstream client" = "https://github.com/HumanAIGC-Engineering/OpenAvatarChat-WebUI"
 

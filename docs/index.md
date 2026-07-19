@@ -1,7 +1,7 @@
 ---
 layout: home
 hero:
-  name: HIWM Interaction Demo
+  name: HIWM Interaction Engine
   text: 人际互动世界模型的交互决策演示平台
   tagline: 经同意获取有限证据，生成三条候选动作，先锁定再执行，并用真实反馈更新工作信念
   actions:
@@ -11,6 +11,9 @@ hero:
     - theme: alt
       text: 查看运行架构
       link: /guides/hiwm-runtime
+    - theme: alt
+      text: API v1
+      link: /guides/api-v1
     - theme: alt
       text: 研究定义
       link: /research/hiwm-definition.zh-CN

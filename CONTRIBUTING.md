@@ -1,12 +1,12 @@
 # Contributing
 
-Thanks for improving HIWM Interaction Demo. This repository contains a Python service and a Vue/Electron client; changes that alter their shared contracts should update both sides and include regression coverage.
+Thanks for improving HIWM Interaction Engine. This repository contains a Python service and a Vue/Electron client; changes that alter their shared contracts should update both sides and include regression coverage.
 
 ## Before opening a change
 
 1. Create a focused branch and keep generated files, credentials, logs, ledgers, model weights, and real conversation data out of commits.
 2. Initialize pinned third-party code with `git submodule update --init --recursive`; do not rewrite third-party history or remove its license files.
-3. Preserve compatibility API and storage identifiers unless the change includes an explicit migration path.
+3. Use `/api/v1` and `hiwm.*` for new contracts. Preserve pre-0.2 compatibility identifiers unless the change includes an explicit migration path and release note.
 4. Describe scientific and safety claims precisely. Do not introduce hidden-emotion, personality, deception, diagnosis, protected-trait, or high-impact suitability inference.
 
 ## Checks

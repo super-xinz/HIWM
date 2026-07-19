@@ -11,6 +11,7 @@ import { useAppStore } from './store/app'
 import { useMediaStore } from './store/media'
 import { type AnalysisConsentRecord, usePerceptionStore } from './store/perception'
 import { isDashscopeRuntimeKeyReady } from './interface/apiConfig'
+import { writeRuntimeControlToken } from './utils/projectStorage'
 
 const appState = useAppStore()
 const mediaState = useMediaStore()
@@ -38,7 +39,7 @@ const completeSetup = async (
   setupError.value = null
 
   if (appState.runtimeControlAuthRequired) {
-    localStorage.setItem('auth_openavatarchat', accessToken)
+    writeRuntimeControlToken(accessToken)
   }
 
   // Start getUserMedia synchronously from the original button gesture. Key

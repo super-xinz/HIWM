@@ -1,4 +1,11 @@
 import { defineStore } from 'pinia'
+import {
+  HIWM_PROFILE_STORAGE_KEY,
+  LEGACY_PROFILE_STORAGE_KEYS,
+  readMigratedStorage,
+  removeProjectStorage,
+  writeProjectStorage,
+} from '../utils/projectStorage.ts'
 
 export type ClientSessionProfilePayload =
   | {
@@ -21,7 +28,6 @@ type ProfileState = {
   savedAt: number | null
 }
 
-const STORAGE_KEY = 'openavatarchat.hiwm.initial-profile.v1'
 const MAX_PROFILE_LENGTH = 4000
 
 const createProfileId = (): string => {
@@ -35,7 +41,7 @@ const loadProfile = (): ProfileState => {
   const fallback = { profileId: createProfileId(), initialInformation: '', savedAt: null }
   if (typeof window === 'undefined' || !window.localStorage) return fallback
   try {
-    const serialized = window.localStorage.getItem(STORAGE_KEY)
+    const serialized = readMigratedStorage(HIWM_PROFILE_STORAGE_KEY, LEGACY_PROFILE_STORAGE_KEYS)
     if (!serialized) return fallback
     const parsed = JSON.parse(serialized) as Partial<StoredProfile>
     if (
@@ -76,14 +82,18 @@ export const useProfileStore = defineStore('hiwmProfileStore', {
         initial_information: normalized,
         saved_at: this.savedAt,
       }
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+      writeProjectStorage(
+        HIWM_PROFILE_STORAGE_KEY,
+        JSON.stringify(value),
+        LEGACY_PROFILE_STORAGE_KEYS
+      )
       return true
     },
     clear(): void {
       this.initialInformation = ''
       this.savedAt = null
       this.profileId = createProfileId()
-      if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY)
+      removeProjectStorage(HIWM_PROFILE_STORAGE_KEY, LEGACY_PROFILE_STORAGE_KEYS)
     },
     toClientPayload(): ClientSessionProfilePayload {
       const initialInformation = this.initialInformation.trim()

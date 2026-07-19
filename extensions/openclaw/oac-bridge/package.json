@@ -1,6 +1,6 @@
 {
   "name": "@openclaw/oac-bridge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "HIWM bridge: agent profile/task tools + compatibility OAC IM channel",
   "type": "module",
@@ -10,7 +10,7 @@
     ],
     "channel": {
       "id": "oac-bridge",
-      "label": "HIWM Interaction Demo",
+      "label": "HIWM Interaction Engine",
       "blurb": "Connect OpenClaw to the HIWM interaction interface."
     }
   }

@@ -11,12 +11,11 @@ RUN pnpm run build
 FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
 
 # Re-declare ARGs after FROM to make them available in subsequent layers
-ARG WORK_DIR=/root/hiwm-interaction-demo
+ARG WORK_DIR=/root/hiwm-interaction-engine
 
-# Image metadata. Repository-specific source URLs can be added by downstream
-# release workflows once the public repository location is known.
-LABEL org.opencontainers.image.title="HIWM Interaction Demo" \
+LABEL org.opencontainers.image.title="HIWM Interaction Engine" \
       org.opencontainers.image.description="Consent-first HIWM interaction-decision demo" \
+      org.opencontainers.image.source="https://github.com/super-xinz/HIWM" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 

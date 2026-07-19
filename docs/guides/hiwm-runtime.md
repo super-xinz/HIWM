@@ -1,8 +1,9 @@
-# HIWM Interaction Demo runtime
+# HIWM Interaction Engine runtime
 
-This checkout keeps the OpenAvatarChat 0.6.0 RTC/VAD/ASR/TTS/Avatar pipeline
-and adds an HIWM decision gate and dashboard. It is an interaction-decision
-demo, not a calibrated or independently trained human world-model checkpoint.
+HIWM Interaction Engine combines a maintained RTC/VAD/ASR/TTS/Avatar runtime
+with the project's own HIWM decision gate, verified ledger, API, and dashboard.
+It is an interaction-decision demo, not a calibrated or independently trained
+human world-model checkpoint. Upstream provenance remains documented separately.
 
 ## What is implemented
 

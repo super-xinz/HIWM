@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type { ConnectionStatus } from '../managerTypes'
 import { Button, Modal, Input, message } from 'ant-design-vue'
 import { SettingOutlined } from '@ant-design/icons-vue'
+import { readRuntimeControlToken, writeRuntimeControlToken } from '@/utils/projectStorage'
 const props = defineProps<{
   status: ConnectionStatus
   statusTextMap: Record<ConnectionStatus, string>
@@ -19,23 +20,17 @@ const handleReconnect = (): void => {
 
 // Auth 设置弹窗
 const authModalVisible = ref(false)
-const authOpenAvatarChat = ref('')
+const authToken = ref('')
 
 const openAuthModal = (): void => {
   // 读取当前 localStorage 中的值
-  authOpenAvatarChat.value = localStorage.getItem('auth_openavatarchat') || ''
+  authToken.value = readRuntimeControlToken()
   authModalVisible.value = true
 }
 
 const handleAuthSave = (): void => {
   // 保存到 localStorage
-  if (authOpenAvatarChat.value) {
-    localStorage.setItem('auth_openavatarchat', authOpenAvatarChat.value)
-  } else {
-    localStorage.removeItem('auth_openavatarchat')
-  }
-  localStorage.removeItem('auth_robot')
-
+  writeRuntimeControlToken(authToken.value)
   message.success('认证信息已保存')
   authModalVisible.value = false
 }
@@ -48,7 +43,7 @@ const handleAuthCancel = (): void => {
 <template>
   <header class="manager__header">
     <div>
-      <div class="manager__title">HIWM Interaction Demo</div>
+      <div class="manager__title">HIWM Interaction Engine</div>
       <div class="manager__subtitle">实时会话列表 + 详情</div>
     </div>
     <div class="manager__header-actions">
@@ -75,12 +70,12 @@ const handleAuthCancel = (): void => {
         <div class="auth-form__item">
           <label class="auth-form__label">服务端 Token</label>
           <Input.Password
-            v-model:value="authOpenAvatarChat"
-            placeholder="请输入 auth_openavatarchat"
+            v-model:value="authToken"
+            placeholder="请输入 HIWM 服务端访问 Token"
             allow-clear
           />
           <div class="auth-form__hint">
-            用于连接 HIWM 服务端；存储键保留旧名以兼容现有浏览器数据
+            用于连接 HIWM 服务端；旧版本浏览器数据会自动迁移到 HIWM 命名空间
           </div>
         </div>
       </div>

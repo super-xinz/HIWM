@@ -83,7 +83,7 @@ def _replay_client(root: Path, *, enabled: bool = True) -> TestClient:
 def test_get_timeline_returns_empty_bounded_envelope(tmp_path: Path):
     with _replay_client(tmp_path) as client:
         response = client.get(
-            "/openavatarchat/hiwm/sessions/empty-session/timeline"
+            "/api/v1/sessions/empty-session/timeline"
         )
 
     assert response.status_code == 200
@@ -113,7 +113,7 @@ def test_get_timeline_returns_verified_prediction_and_fallback(tmp_path: Path):
 
     with _replay_client(tmp_path) as client:
         response = client.get(
-            f"/openavatarchat/hiwm/sessions/{payload.session_id}/timeline"
+            f"/api/v1/sessions/{payload.session_id}/timeline"
         )
 
     assert response.status_code == 200
@@ -134,14 +134,14 @@ def test_get_timeline_returns_verified_prediction_and_fallback(tmp_path: Path):
 def test_get_timeline_rejects_invalid_id_and_disabled_hiwm(tmp_path: Path):
     with _replay_client(tmp_path) as client:
         invalid = client.get(
-            "/openavatarchat/hiwm/sessions/invalid%21session/timeline"
+            "/api/v1/sessions/invalid%21session/timeline"
         )
     assert invalid.status_code == 400
     assert invalid.json() == {"detail": "invalid session id"}
 
     with _replay_client(tmp_path, enabled=False) as client:
         disabled = client.get(
-            "/openavatarchat/hiwm/sessions/valid-session/timeline"
+            "/api/v1/sessions/valid-session/timeline"
         )
     assert disabled.status_code == 404
     assert disabled.json() == {"detail": "HIWM is not enabled"}
@@ -153,8 +153,8 @@ def test_delete_session_removes_existing_ledger_and_is_idempotent(tmp_path: Path
     ledger_path.write_text("local-test-record\n", encoding="utf-8")
 
     with _replay_client(tmp_path) as client:
-        first = client.delete(f"/openavatarchat/hiwm/sessions/{session_id}")
-        second = client.delete(f"/openavatarchat/hiwm/sessions/{session_id}")
+        first = client.delete(f"/api/v1/sessions/{session_id}")
+        second = client.delete(f"/api/v1/sessions/{session_id}")
 
     assert first.status_code == 200
     assert first.json() == {"session_id": session_id, "deleted": True}
@@ -166,14 +166,14 @@ def test_delete_session_removes_existing_ledger_and_is_idempotent(tmp_path: Path
 def test_delete_session_rejects_invalid_id_and_disabled_hiwm(tmp_path: Path):
     with _replay_client(tmp_path) as client:
         invalid = client.delete(
-            "/openavatarchat/hiwm/sessions/invalid%21session"
+            "/api/v1/sessions/invalid%21session"
         )
     assert invalid.status_code == 400
     assert invalid.json() == {"detail": "invalid session id"}
 
     with _replay_client(tmp_path, enabled=False) as client:
         disabled = client.delete(
-            "/openavatarchat/hiwm/sessions/valid-session"
+            "/api/v1/sessions/valid-session"
         )
     assert disabled.status_code == 404
     assert disabled.json() == {"detail": "HIWM is not enabled"}
@@ -187,12 +187,24 @@ def test_replay_requires_bearer_token_when_cloud_access_is_enabled(
 
     with _replay_client(tmp_path) as client:
         denied = client.get(
-            "/openavatarchat/hiwm/sessions/cloud-session/timeline"
+            "/api/v1/sessions/cloud-session/timeline"
         )
         allowed = client.get(
-            "/openavatarchat/hiwm/sessions/cloud-session/timeline",
+            "/api/v1/sessions/cloud-session/timeline",
             headers={"Authorization": f"Bearer {token}"},
         )
 
     assert denied.status_code == 403
     assert allowed.status_code == 200
+
+
+def test_legacy_replay_route_remains_available_during_namespace_migration(
+    tmp_path: Path,
+):
+    with _replay_client(tmp_path) as client:
+        response = client.get(
+            "/openavatarchat/hiwm/sessions/legacy-session/timeline"
+        )
+
+    assert response.status_code == 200
+    assert response.json()["session_id"] == "legacy-session"
