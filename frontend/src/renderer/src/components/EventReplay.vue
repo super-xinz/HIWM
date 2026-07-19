@@ -58,7 +58,7 @@ const stageLabels: Record<HiwmTimelineEventType, string> = {
   robot_response: '已锁定待播回应',
   actual_response: '实际回应已到达',
   evaluated: '预测已评估',
-  profile_updated: '工作假设已更新',
+  profile_updated: '当前理解已更新',
 }
 
 const comparisonLabels: Record<HiwmEvaluatedPayload['comparison'], string> = {
@@ -103,7 +103,7 @@ const summary = (event: HiwmTimelineEvent): string => {
     }
     case 'profile_updated': {
       const payload = event.payload as HiwmProfileUpdatedPayload
-      return `${payload.beliefs.length} 项有证据引用的工作假设发生变化`
+      return `${payload.beliefs.length} 项当前理解发生变化`
     }
   }
 }
@@ -208,7 +208,7 @@ onBeforeUnmount(clearPlaybackTimer)
 </script>
 
 <template>
-  <section class="event-replay" aria-label="HIWM 派生事件回放">
+  <section class="event-replay" aria-label="HIWM 互动记录回放">
     <header class="replay-header">
       <div>
         <span class="eyebrow">DERIVED EVENT REPLAY</span>
@@ -244,9 +244,7 @@ onBeforeUnmount(clearPlaybackTimer)
     </header>
 
     <p class="privacy-line">
-      回放最多 200
-      条在浏览器本地追加、运行时冻结的派生证据与决策事件；点击会定位到派生时间点，但不会播放
-      未保存的原始音频、视频或图像帧。
+      每个会话最多显示 200 条互动记录。点击记录可查看对应时间点，原始音频和视频不会保存。
     </p>
 
     <template v-if="events.length">
@@ -331,8 +329,8 @@ onBeforeUnmount(clearPlaybackTimer)
     </template>
 
     <div v-else class="empty">
-      <strong>当前会话还没有派生事件</strong>
-      <span>收到符合严格 Schema 的 HIWM 快照后，事件将按次序追加到这里。</span>
+      <strong>当前会话还没有互动记录</strong>
+      <span>开始对话后，重要的互动节点会依次显示在这里。</span>
     </div>
   </section>
 </template>

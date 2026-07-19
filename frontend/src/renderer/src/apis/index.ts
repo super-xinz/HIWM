@@ -8,14 +8,6 @@ export function initConfig(): Promise<Response> {
   return fetch('/api/v1/runtime/config')
 }
 
-export function configureRuntimeApiKey(apiKey: string): Promise<Response> {
-  return fetch('/api/v1/runtime/api-key', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ api_key: apiKey }),
-  })
-}
-
 export function webrtcOffer(body: Record<string, unknown>): Promise<Response> {
   return fetch('/webrtc/offer', {
     method: 'POST',

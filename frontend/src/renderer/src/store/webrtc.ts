@@ -93,11 +93,7 @@ export const useVideoChatStore = defineStore('videoChatStore', {
           hasRealVideo = hasLiveTrack(mediaStream, 'video')
         }
         if (!mediaStream || !hasRealAudio || (mediaStore.videoRequired && !hasRealVideo)) {
-          message.error(
-            mediaStore.videoRequired
-              ? '需要真实摄像头和麦克风轨道，当前未建立连接'
-              : '需要真实麦克风轨道，当前未建立连接'
-          )
+          message.error(mediaStore.videoRequired ? '摄像头或麦克风尚未准备好' : '麦克风尚未准备好')
           return
         }
         perceptionStore.resetSession()
@@ -196,7 +192,7 @@ export const useVideoChatStore = defineStore('videoChatStore', {
             clearDisconnectRecovery(peerConnection)
             if (peerConnection.connectionState !== 'closed') peerConnection.close()
             const errorMessage = e instanceof Error ? e.message : String(e)
-            message.error(`真实会话连接失败：${errorMessage}`)
+            message.error(`互动连接失败：${errorMessage}`)
           })
       } else if (this.streamState === 'waiting') {
         // waiting 中不允许操作
@@ -383,7 +379,7 @@ export const useVideoChatStore = defineStore('videoChatStore', {
           const backendMessage =
             isRecord(data.payload) && typeof data.payload.message === 'string'
               ? data.payload.message.slice(0, 240)
-              : '后端返回了未知错误'
+              : '服务返回了未知错误'
           chatStore.replying = false
           chatStore.playbackActive = false
           message.error(backendMessage)

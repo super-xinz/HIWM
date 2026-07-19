@@ -25,9 +25,7 @@ const text = computed(() =>
   videoRequired.value ? '点击允许访问摄像头和麦克风' : '点击允许访问麦克风'
 )
 const description = computed(() =>
-  videoRequired.value
-    ? '当前模型需要真实摄像头与麦克风'
-    : '当前 HIWM 为纯文本模型，不申请摄像头权限'
+  videoRequired.value ? '本次体验需要摄像头与麦克风' : '本次体验仅需要麦克风'
 )
 </script>
 

@@ -8,7 +8,7 @@ from loguru import logger
 from chat_engine.contexts.session_clock import SessionClock
 import gradio
 import numpy as np
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI
 
 # ============================================================================
 # H.264 Hardware Encoder Configuration (must execute before importing fastrtc)
@@ -219,7 +219,7 @@ _configure_h264_hardware_encoding()
 # noinspection PyPackageRequirements
 from fastrtc import Stream  # noqa: E402
 
-from pydantic import BaseModel, Field, SecretStr, ValidationError  # noqa: E402
+from pydantic import BaseModel, Field, ValidationError  # noqa: E402
 
 from chat_engine.common.client_handler_base import ClientHandlerBase, ClientSessionDelegate
 from chat_engine.data_models.engine_channel_type import EngineChannelType
@@ -255,9 +255,6 @@ from handlers.client.ws_client.ws_message_protocol import (
 )
 from service.frontend_service import (
     build_public_api_config,
-    configure_runtime_api_key,
-    require_runtime_control_access,
-    runtime_control_auth_required,
     register_frontend,
     register_hiwm_replay,
     register_robot_action_api,
@@ -430,12 +427,6 @@ class WebRTCCloseRequest(BaseModel):
     )
 
 
-class RuntimeApiKeyRequest(BaseModel):
-    """Credential input whose representation remains redacted."""
-
-    api_key: SecretStr
-
-
 async def close_webrtc_session(stream: Any, webrtc_id: str) -> bool:
     """Idempotently close and remove a FastRTC peer before a quick reconnect."""
 
@@ -545,8 +536,7 @@ class ClientHandlerRtc(ClientHandlerBase):
         webrtc.mount(fastapi)
 
         @fastapi.post("/webrtc/close")
-        async def close_webrtc(payload: WebRTCCloseRequest, request: Request):
-            require_runtime_control_access(request)
+        async def close_webrtc(payload: WebRTCCloseRequest):
             closed = await close_webrtc_session(webrtc, payload.webrtc_id)
             logger.info(
                 "RTC signaling session explicit release closed={}",
@@ -560,29 +550,6 @@ class ClientHandlerRtc(ClientHandlerBase):
             getattr(handler_manager, "handler_registries", {}).get("HIWM")
         )
 
-        @fastapi.post(
-            "/openavatarchat/runtime-api-key",
-            deprecated=True,
-            include_in_schema=False,
-        )
-        @fastapi.post(f"{API_PREFIX}/runtime/api-key")
-        async def set_runtime_api_key(payload: RuntimeApiKeyRequest, request: Request):
-            require_runtime_control_access(request)
-            try:
-                api_config = configure_runtime_api_key(
-                    handler_manager,
-                    payload.api_key.get_secret_value(),
-                )
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail=str(exc)) from None
-            except RuntimeError:
-                raise HTTPException(
-                    status_code=503,
-                    detail="本机服务尚未准备好，请稍后重试",
-                ) from None
-            logger.info("DashScope runtime credential configured from local UI")
-            return {"status": "configured", "api_config": api_config}
-
         def init_config_provider():
             return {
                 "avatar_config": avatar_config,
@@ -592,9 +559,6 @@ class ClientHandlerRtc(ClientHandlerBase):
                     "debug": False,
                 },
                 "capabilities": {
-                    "runtime_control_auth": (
-                        "bearer" if runtime_control_auth_required() else None
-                    ),
                     "face_landmarks": "client" if hiwm_enabled else None,
                     "prosody": "client" if hiwm_enabled else None,
                     "initial_profile": "client_confirmed_session_text" if hiwm_enabled else None,

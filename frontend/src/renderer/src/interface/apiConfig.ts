@@ -147,10 +147,10 @@ const parseTtsConfig = (value: unknown): PublicTtsConfig | null => {
 
 export const parsePublicApiConfig = (value: unknown): PublicApiConfigParseResult => {
   if (!isRecord(value)) {
-    return { ok: false, reason: '后端 api_config 不是有效对象' }
+    return { ok: false, reason: '服务配置暂时无法识别' }
   }
   if (containsForbiddenSecretField(value)) {
-    return { ok: false, reason: '后端 api_config 含禁止的敏感字段，前端已拒绝载入' }
+    return { ok: false, reason: '服务配置校验失败，请稍后重试' }
   }
 
   return {

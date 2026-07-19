@@ -111,8 +111,8 @@ export const useChatStore = defineStore('chatStore', {
           ? payload.metadata.error_message.trim()
           : ''
       const content = backendMessage.includes(accountStandingError)
-        ? '语音识别失败：百炼 API Key 所属账号欠费或余额异常，云端 fun-asr-realtime 已拒绝本次转写，请在阿里云「费用与成本」处理后重试'
-        : `语音识别失败：${backendMessage || '百炼 ASR 未返回可用结果'}`
+        ? '语音服务暂时不可用，请联系管理员确认服务账户状态'
+        : `语音识别暂时失败：${backendMessage || '请稍后重试'}`
 
       this.replying = false
       this.playbackActive = false

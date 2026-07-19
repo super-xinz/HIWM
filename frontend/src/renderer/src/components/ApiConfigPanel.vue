@@ -35,65 +35,32 @@ interface ServiceView {
 const appState = useAppStore()
 const { apiConfig, apiConfigStatus, apiConfigError } = storeToRefs(appState)
 
-const missingValue = (value: string | null, label = '配置缺失'): string => value || label
-const formatEndpoint = (value: string | null): string => value || '未显式配置'
+const missingValue = (value: string | null, label = '暂不可用'): string => value || label
 const formatNumber = (value: number | null, unit: string): string =>
-  value === null ? '配置缺失' : `${value} ${unit}`
+  value === null ? '暂不可用' : `${value} ${unit}`
 const formatModalities = (value: string[] | null): string => {
-  if (!value) return '能力信息缺失'
+  if (!value) return '暂不可用'
   return value.map((modality) => ({ text: '文本', image: '图像' })[modality] || modality).join('、')
-}
-const formatSupport = (value: boolean | null): string => {
-  if (value === null) return '能力信息缺失'
-  return value ? '支持' : '不支持'
 }
 
 const commonFields = (config: PublicApiServiceConfig): ConfigField[] => [
-  { label: 'Provider', value: missingValue(config.provider) },
-  { label: 'Model', value: missingValue(config.model) },
-  { label: 'Endpoint', value: formatEndpoint(config.endpoint) },
-  { label: 'Key 配置槽', value: missingValue(config.key_env, '配置槽名称缺失') },
-  {
-    label: 'Key 状态',
-    value:
-      config.configured === null ? '状态缺失' : config.configured ? '已加载（未验证）' : '未配置',
-  },
+  { label: '服务商', value: missingValue(config.provider) },
+  { label: '模型', value: missingValue(config.model) },
 ]
 
 const asrFields = (config: PublicAsrConfig): ConfigField[] => [
   ...commonFields(config),
-  { label: '采样率', value: formatNumber(config.sample_rate, 'Hz') },
-  { label: '音频格式', value: missingValue(config.format) },
+  { label: '音频标准', value: formatNumber(config.sample_rate, 'Hz') },
 ]
 
 const hiwmFields = (config: PublicHiwmConfig): ConfigField[] => [
   ...commonFields(config),
-  { label: '请求超时', value: formatNumber(config.timeout_seconds, 's') },
-  {
-    label: 'Temperature',
-    value: config.temperature === null ? '配置缺失' : String(config.temperature),
-  },
-  {
-    label: '流式响应',
-    value: config.streaming === null ? '配置缺失' : config.streaming ? '已启用' : '已关闭',
-  },
-  { label: '输入模态', value: formatModalities(config.input_modalities) },
-  { label: 'Structured Output', value: formatSupport(config.structured_output) },
-  {
-    label: '思考模式',
-    value:
-      config.thinking_enabled === null ? '配置缺失' : config.thinking_enabled ? '已启用' : '已关闭',
-  },
-  {
-    label: '响应格式参数',
-    value: config.response_format || '未启用',
-  },
+  { label: '支持内容', value: formatModalities(config.input_modalities) },
 ]
 
 const ttsFields = (config: PublicTtsConfig): ConfigField[] => [
   ...commonFields(config),
-  { label: 'Voice', value: missingValue(config.voice) },
-  { label: '采样率', value: formatNumber(config.sample_rate, 'Hz') },
+  { label: '声音', value: missingValue(config.voice) },
 ]
 
 const services = computed<ServiceView[]>(() => {
@@ -103,22 +70,22 @@ const services = computed<ServiceView[]>(() => {
   return [
     {
       id: 'asr',
-      name: 'ASR',
-      description: '实时语音识别',
+      name: '语音识别',
+      description: '将语音转成文字',
       config: asr,
       fields: asr ? asrFields(asr) : [],
     },
     {
       id: 'hiwm',
-      name: 'HIWM',
-      description: '世界模型推理',
+      name: '智能分析',
+      description: '理解对话与画面信息',
       config: hiwm,
       fields: hiwm ? hiwmFields(hiwm) : [],
     },
     {
       id: 'tts',
-      name: 'TTS',
-      description: '实时语音合成',
+      name: '语音回复',
+      description: '生成自然语音回应',
       config: tts,
       fields: tts ? ttsFields(tts) : [],
     },
@@ -126,24 +93,23 @@ const services = computed<ServiceView[]>(() => {
 })
 
 const panelStatusLabel = computed(() => {
-  if (apiConfigStatus.value === 'loading') return '正在读取真实配置'
-  if (apiConfigStatus.value === 'missing') return 'API 配置未提供'
-  if (apiConfigStatus.value === 'error') return 'API 配置读取失败'
+  if (apiConfigStatus.value === 'loading') return '正在连接服务'
+  if (apiConfigStatus.value === 'missing') return '服务暂不可用'
+  if (apiConfigStatus.value === 'error') return '服务连接失败'
   const missingCount = services.value.filter((service) => !service.config).length
-  return missingCount ? `${missingCount} 个配置段缺失` : '配置已同步'
+  return missingCount ? '部分服务暂不可用' : '服务已就绪'
 })
 
 const sectionStatus = computed(() => {
-  if (apiConfigStatus.value === 'loading') return '正在从后端读取'
-  if (apiConfigStatus.value === 'missing') return '后端未提供 api_config'
-  if (apiConfigStatus.value === 'error') return '无法读取该配置'
-  return '后端未提供该配置段'
+  if (apiConfigStatus.value === 'loading') return '正在连接'
+  if (apiConfigStatus.value === 'error') return '连接失败，请稍后重试'
+  return '暂不可用'
 })
 
 const configuredLabel = (config: PublicApiServiceConfig | null): string => {
-  if (!config) return '配置缺失'
-  if (config.configured === null) return '状态缺失'
-  return config.configured ? 'Key 已加载' : '未配置'
+  if (!config) return '暂不可用'
+  if (config.configured === null) return '正在检查'
+  return config.configured ? '已连接' : '正在准备'
 }
 
 const configuredClass = (config: PublicApiServiceConfig | null): string => {
@@ -156,16 +122,15 @@ const configuredClass = (config: PublicApiServiceConfig | null): string => {
   <section
     class="api-config-panel"
     :class="{ 'is-permission-mode': permissionMode }"
-    aria-label="真实 API 配置"
+    aria-label="AI 服务状态"
   >
     <header class="api-config-header">
       <div>
-        <span class="api-config-kicker">API RUNTIME CONFIG</span>
-        <h2>真实 API 配置</h2>
+        <span class="api-config-kicker">AI SERVICES</span>
+        <h2>AI 服务状态</h2>
       </div>
       <div class="api-config-meta">
-        <span v-if="apiConfig?.schema_version">Schema {{ apiConfig.schema_version }}</span>
-        <span v-else>Schema 未提供</span>
+        <span>{{ services.length }} 项服务</span>
         <strong :class="`is-${apiConfigStatus}`" aria-live="polite">
           {{ panelStatusLabel }}
         </strong>
@@ -198,12 +163,11 @@ const configuredClass = (config: PublicApiServiceConfig | null): string => {
 
     <footer v-if="permissionMode">
       <span aria-hidden="true">●</span>
-      配置详情始终脱敏；你在本页提交的 Key 只进入当前服务内存，不写入 .env 或浏览器存储
+      AI 服务已由系统统一连接，可直接开始使用
     </footer>
     <footer v-else>
       <span aria-hidden="true">●</span>
-      只读脱敏配置：Key
-      已加载仅代表环境变量存在，不代表余额与模型权限已通过验证；前端不接收、保存或显示 Key 值
+      页面仅显示服务状态，不会展示任何访问凭证
     </footer>
   </section>
 </template>

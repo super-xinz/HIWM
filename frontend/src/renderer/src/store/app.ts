@@ -1,9 +1,8 @@
 import { message } from 'ant-design-vue'
 import { defineStore } from 'pinia'
 
-import { configureRuntimeApiKey, initConfig, makeURL } from '@/apis'
+import { initConfig, makeURL } from '@/apis'
 import {
-  isDashscopeRuntimeKeyReady,
   parsePublicApiConfig,
   type ApiConfigLoadState,
   type PublicApiConfig,
@@ -31,7 +30,6 @@ interface AppState {
   apiConfig: PublicApiConfig | null
   apiConfigStatus: ApiConfigLoadState
   apiConfigError: string | null
-  runtimeControlAuthRequired: boolean
 
   toolsVisible: boolean
   inputVisible: boolean
@@ -49,7 +47,6 @@ export const useAppStore = defineStore('appStore', {
     apiConfig: null,
     apiConfigStatus: 'loading',
     apiConfigError: null,
-    runtimeControlAuthRequired: false,
     toolsVisible: true,
     inputVisible: true,
   }),
@@ -64,13 +61,13 @@ export const useAppStore = defineStore('appStore', {
         .then((config) => {
           if (config.detail) {
             this.apiConfigStatus = 'error'
-            this.apiConfigError = '初始化接口返回错误，未能读取 API 配置'
+            this.apiConfigError = '暂时无法读取服务状态'
             message.error(config.detail)
             return
           }
           if (!Object.prototype.hasOwnProperty.call(config, 'api_config')) {
             this.apiConfigStatus = 'missing'
-            this.apiConfigError = '后端未提供 api_config'
+            this.apiConfigError = 'AI 服务正在准备，请稍后重试'
           } else {
             const result = parsePublicApiConfig(config.api_config)
             if (result.ok) {
@@ -81,7 +78,6 @@ export const useAppStore = defineStore('appStore', {
               this.apiConfigError = result.reason
             }
           }
-          this.runtimeControlAuthRequired = config.capabilities?.runtime_control_auth === 'bearer'
           if (config.rtc_configuration) {
             this.rtcConfig = config.rtc_configuration
           }
@@ -115,29 +111,9 @@ export const useAppStore = defineStore('appStore', {
         .catch((e) => {
           this.apiConfig = null
           this.apiConfigStatus = 'error'
-          this.apiConfigError = '无法连接后端初始化接口'
-          message.error(
-            `服务端链接失败，请检查是否能正确访问到 HIWM 服务端: ${e instanceof Error ? e.message : String(e)}`
-          )
+          this.apiConfigError = '无法连接 HIWM，请稍后重试'
+          message.error(`HIWM 暂时无法连接：${e instanceof Error ? e.message : String(e)}`)
         })
-    },
-    async configureRuntimeApiKey(apiKey: string): Promise<boolean> {
-      const response = await configureRuntimeApiKey(apiKey)
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        const detail =
-          payload && typeof payload.detail === 'string'
-            ? payload.detail
-            : 'API Key 配置失败，请检查当前服务后重试'
-        throw new Error(detail)
-      }
-      const result = parsePublicApiConfig(payload?.api_config)
-      if (!result.ok) throw new Error(result.reason)
-
-      this.apiConfig = result.config
-      this.apiConfigStatus = 'ready'
-      this.apiConfigError = null
-      return isDashscopeRuntimeKeyReady(result.config)
     },
     resetChatRecords() {
       this.chatRecords = []

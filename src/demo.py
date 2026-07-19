@@ -8,15 +8,13 @@ import sys
 
 import gradio
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 from loguru import logger
 
 from engine_utils.directory_info import DirectoryInfo
 from service.service_utils.logger_utils import config_loggers
 from service.service_utils.service_config_loader import load_configs
 from service.service_utils.ssl_helpers import create_ssl_context
-from service.frontend_service import require_runtime_control_access
 from project_identity import PROJECT_NAME, PROJECT_VERSION
 
 project_dir = DirectoryInfo.get_project_dir()
@@ -71,22 +69,6 @@ def setup_demo():
         docs_url=None,
         redoc_url=None,
     )
-
-    @app.middleware("http")
-    async def protect_remote_webrtc_control(request: Request, call_next):
-        # Fastrtc mounts the offer route internally, so protect it at the app
-        # boundary. Static UI, initialization, and health routes stay public so
-        # the setup page can explain which credential is required.
-        if request.method == "POST" and request.url.path.startswith("/webrtc/"):
-            try:
-                require_runtime_control_access(request)
-            except HTTPException as exc:
-                return JSONResponse(
-                    status_code=exc.status_code,
-                    content={"detail": exc.detail},
-                    headers=exc.headers,
-                )
-        return await call_next(request)
 
     css = """
 

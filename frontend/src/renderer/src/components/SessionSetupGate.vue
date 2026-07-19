@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
   AudioOutlined,
-  EyeInvisibleOutlined,
-  EyeOutlined,
   SafetyCertificateOutlined,
   VideoCameraOutlined,
 } from '@ant-design/icons-vue'
@@ -13,8 +11,7 @@ import ApiConfigPanel from '@/components/ApiConfigPanel.vue'
 import { useAppStore } from '@/store/app'
 import { useMediaStore } from '@/store/media'
 import type { AnalysisConsentRecord } from '@/store/perception'
-import { isDashscopeRuntimeKeyReady, isDashscopeRuntimeKeyRequired } from '@/interface/apiConfig'
-import { readRuntimeControlToken } from '@/utils/projectStorage'
+import { isDashscopeRuntimeKeyReady } from '@/interface/apiConfig'
 
 const props = withDefaults(
   defineProps<{
@@ -22,21 +19,17 @@ const props = withDefaults(
     busy?: boolean
     error?: string | null
     consentVersion?: string
-    derivedRetentionLabel?: string
-    accessControlRequired?: boolean
   }>(),
   {
     visible: true,
     busy: false,
     error: null,
     consentVersion: 'hiwm-demo-1.0',
-    derivedRetentionLabel: '派生事件最多保留 200 条；服务端预测锁可由你主动删除',
-    accessControlRequired: false,
   }
 )
 
 const emit = defineEmits<{
-  start: [decision: AnalysisConsentRecord, apiKey: string, accessToken: string]
+  start: [decision: AnalysisConsentRecord]
 }>()
 
 const appState = useAppStore()
@@ -44,39 +37,19 @@ const mediaState = useMediaStore()
 const { apiConfig, apiConfigStatus } = storeToRefs(appState)
 const { permissionError } = storeToRefs(mediaState)
 
-const apiKey = ref('')
-const accessToken = ref(typeof window === 'undefined' ? '' : readRuntimeControlToken())
-const revealKey = ref(false)
-
-const keyRequired = computed(() => isDashscopeRuntimeKeyRequired(apiConfig.value))
 const keyConfigured = computed(() => isDashscopeRuntimeKeyReady(apiConfig.value))
-const normalizedKey = computed(() => apiKey.value.trim())
-const normalizedAccessToken = computed(() => accessToken.value.trim())
 const videoRequired = computed(() => {
   const modalities = apiConfig.value?.hiwm?.input_modalities
   return modalities ? modalities.includes('image') : true
 })
 const displayedError = computed(() => props.error || permissionError.value)
 const canStart = computed(
-  () =>
-    !props.busy &&
-    apiConfigStatus.value === 'ready' &&
-    (!props.accessControlRequired || normalizedAccessToken.value.length >= 16) &&
-    (keyConfigured.value || normalizedKey.value.length >= 8)
+  () => !props.busy && apiConfigStatus.value === 'ready' && keyConfigured.value
 )
 const actionLabel = computed(() => {
-  if (props.busy) return '正在完成配置并申请权限…'
-  return '同意、授权并进入下一步'
+  if (props.busy) return '正在准备，请稍候…'
+  return '同意并开始体验'
 })
-
-watch(
-  () => props.visible,
-  (visible) => {
-    if (visible) return
-    apiKey.value = ''
-    revealKey.value = false
-  }
-)
 
 const createConsentId = (): string => {
   if (typeof window !== 'undefined' && typeof window.crypto?.randomUUID === 'function') {
@@ -104,7 +77,7 @@ const createDecision = (): AnalysisConsentRecord =>
 
 const start = (): void => {
   if (!canStart.value) return
-  emit('start', createDecision(), normalizedKey.value, normalizedAccessToken.value)
+  emit('start', createDecision())
 }
 </script>
 
@@ -120,15 +93,15 @@ const start = (): void => {
       <div class="setup-content">
         <header class="setup-header">
           <div>
-            <span class="eyebrow">ONE-STEP SETUP</span>
-            <h1 id="setup-title">一次完成启动设置</h1>
+            <span class="eyebrow">GET STARTED</span>
+            <h1 id="setup-title">开始使用 HIWM</h1>
             <p>
-              在当前页面配置 API Key、确认数据用途，并申请{{
+              确认所需权限，即可开始实时互动。首次使用时，浏览器会申请{{
                 videoRequired ? '摄像头与麦克风' : '麦克风'
               }}权限。
             </p>
           </div>
-          <span class="step-badge">一步完成</span>
+          <span class="step-badge">快速开始</span>
         </header>
 
         <ApiConfigPanel permission-mode />
@@ -138,64 +111,17 @@ const start = (): void => {
             <div class="section-heading">
               <span class="section-index">01</span>
               <div>
-                <h2 id="api-key-title">配置我的 DashScope API Key</h2>
-                <p>同一个 Key 将用于 ASR、HIWM 与 TTS。</p>
+                <h2 id="api-key-title">AI 服务连接</h2>
+                <p>语音识别、智能分析与语音回复均已由系统统一配置。</p>
               </div>
               <span class="key-status" :class="{ configured: keyConfigured }">
-                {{
-                  !keyRequired
-                    ? '当前配置无需输入'
-                    : keyConfigured
-                      ? '已加载，可直接继续'
-                      : '等待输入'
-                }}
+                {{ keyConfigured ? '已准备就绪' : '正在连接' }}
               </span>
-            </div>
-
-            <div class="key-input-wrap">
-              <label class="sr-only" for="dashscope-runtime-api-key">DashScope API Key</label>
-              <input
-                id="dashscope-runtime-api-key"
-                v-model="apiKey"
-                :type="revealKey ? 'text' : 'password'"
-                name="dashscope-runtime-api-key"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                :placeholder="keyConfigured ? '如需替换，可输入新的 Key' : '请输入 sk-…'"
-                :disabled="busy || !keyRequired"
-                @keyup.enter="start"
-              />
-              <button
-                type="button"
-                class="reveal-button"
-                :aria-label="revealKey ? '隐藏 API Key' : '显示 API Key'"
-                :disabled="busy"
-                @click="revealKey = !revealKey"
-              >
-                <EyeInvisibleOutlined v-if="revealKey" />
-                <EyeOutlined v-else />
-              </button>
-            </div>
-
-            <div v-if="accessControlRequired" class="access-token-field">
-              <label for="hiwm-access-token">访问密码</label>
-              <input
-                id="hiwm-access-token"
-                v-model="accessToken"
-                type="password"
-                name="hiwm-access-token"
-                autocomplete="current-password"
-                placeholder="请输入部署时设置的访问密码"
-                :disabled="busy"
-                @keyup.enter="start"
-              />
-              <small>用于阻止其他人调用你的模型额度；只保存在当前浏览器。</small>
             </div>
 
             <p class="memory-note">
               <SafetyCertificateOutlined />
-              Key 只发送到当前服务的进程内存，不写入 .env、不存入浏览器，也不会由服务端回传。
+              AI 服务已安全连接，无需额外填写任何凭证。
             </p>
           </section>
 
@@ -203,8 +129,8 @@ const start = (): void => {
             <div class="section-heading">
               <span class="section-index">02</span>
               <div>
-                <h2 id="consent-title">确认授权范围</h2>
-                <p>点击下方按钮即表示同意本次会话使用这些功能。</p>
+                <h2 id="consent-title">权限与隐私</h2>
+                <p>开始前，请确认本次体验所需的设备权限。</p>
               </div>
             </div>
 
@@ -214,25 +140,25 @@ const start = (): void => {
                 <AudioOutlined v-else />
                 <div>
                   <strong>{{ videoRequired ? '摄像头与麦克风' : '麦克风' }}</strong>
-                  <span>仅在会话期间读取，你可随时结束会话。</span>
+                  <span>用于实时语音和画面互动，可随时关闭。</span>
                 </div>
               </article>
               <article>
                 <span class="signal-icon">⌁</span>
                 <div>
-                  <strong>本地派生特征</strong>
-                  <span>面部点位、头部姿态和语音韵律优先在本地计算。</span>
+                  <strong>互动感知</strong>
+                  <span>帮助理解面部动作、姿态和语音节奏。</span>
                 </div>
               </article>
               <article>
                 <span class="signal-icon">↗</span>
                 <div>
-                  <strong>有限内容发送云端</strong>
+                  <strong>智能分析</strong>
                   <span>
                     {{
                       videoRequired
-                        ? '转录、派生摘要、已确认信息及最近一帧画面用于当前推理。'
-                        : '转录、派生摘要及已确认信息用于当前推理。'
+                        ? '结合对话内容和必要的画面信息，生成实时回应与建议。'
+                        : '结合对话内容生成实时回应与建议。'
                     }}
                   </span>
                 </div>
@@ -240,8 +166,8 @@ const start = (): void => {
               <article>
                 <span class="signal-icon">∅</span>
                 <div>
-                  <strong>默认不保存原始音视频</strong>
-                  <span>{{ derivedRetentionLabel }}。</span>
+                  <strong>隐私保护</strong>
+                  <span>不会保存原始音频或视频，互动记录可随时清除。</span>
                 </div>
               </article>
             </div>
@@ -249,13 +175,13 @@ const start = (): void => {
         </div>
 
         <div v-if="displayedError" class="setup-error" role="alert">
-          <strong>尚未完成启动设置</strong>
+          <strong>暂时无法开始</strong>
           <span>{{ displayedError }}</span>
         </div>
       </div>
 
       <footer class="setup-footer">
-        <p>点击后会同时保存当前 Key（仅内存）并申请设备权限；全部成功后自动进入交互页面。</p>
+        <p>点击后将申请设备权限，授权成功后自动进入互动页面。</p>
         <button type="button" class="start-button" :disabled="!canStart" @click="start">
           <span>{{ actionLabel }}</span>
           <span aria-hidden="true">→</span>

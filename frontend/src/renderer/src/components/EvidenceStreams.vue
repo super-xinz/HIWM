@@ -233,7 +233,7 @@ const isActive = (value: number | null): boolean =>
             </div>
           </li>
         </ul>
-        <p v-else class="empty">等待面部点位、头部姿态等本地派生信号。</p>
+        <p v-else class="empty">等待画面中的面部动作与姿态信息。</p>
       </article>
 
       <article class="stream-column">
@@ -266,7 +266,7 @@ const isActive = (value: number | null): boolean =>
             </div>
           </li>
         </ul>
-        <p v-else class="empty">等待语速、停顿、音高和能量变化等本地派生信号。</p>
+        <p v-else class="empty">等待语速、停顿、音高和音量变化。</p>
       </article>
 
       <article class="stream-column chat-column">

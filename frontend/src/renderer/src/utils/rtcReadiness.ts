@@ -47,7 +47,7 @@ export function waitForRTCReady(
         peerConnection.iceConnectionState === 'failed' ||
         peerConnection.iceConnectionState === 'closed'
       ) {
-        finish(new RTCReadinessError('真实会话媒体连接失败'))
+        finish(new RTCReadinessError('互动连接失败'))
         return
       }
       if (peerIsConnected() && dataChannel.readyState === 'open') finish()
@@ -63,9 +63,7 @@ export function waitForRTCReady(
 
     const timeout = setTimeout(() => {
       finish(
-        new RTCReadinessError(
-          `真实会话连接超时（${Math.round(timeoutMs / 1000)} 秒），请检查网络后重试`
-        )
+        new RTCReadinessError(`连接超时（${Math.round(timeoutMs / 1000)} 秒），请检查网络后重试`)
       )
     }, timeoutMs)
 

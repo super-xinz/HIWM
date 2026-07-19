@@ -14,7 +14,7 @@ const props = withDefaults(
     visible: true,
     busy: false,
     consentVersion: '1.0',
-    derivedRetentionLabel: '仅保留当前会话所需的转录、特征摘要与派生事件',
+    derivedRetentionLabel: '仅保留本次体验所需的互动记录',
     allowCancel: true,
   }
 )
@@ -74,10 +74,8 @@ const authorize = (): void => {
     <section class="consent-card">
       <header>
         <span class="eyebrow">PRIVACY &amp; CONSENT</span>
-        <h2 id="consent-title">启动 AI 交互分析前，请先明确授权</h2>
-        <p>
-          只有点击“同意并继续”后，上层页面才可以申请设备权限。本组件自身不会打开摄像头或麦克风。
-        </p>
+        <h2 id="consent-title">开始互动前，请确认所需权限</h2>
+        <p>授权成功后即可使用实时语音、画面互动与智能分析功能。</p>
       </header>
 
       <div class="consent-items">
@@ -85,7 +83,7 @@ const authorize = (): void => {
           <span aria-hidden="true">01</span>
           <div>
             <h3>AI 交互</h3>
-            <p>对话由 AI 虚拟人参与，并会用于当前会话的交互预测与响应生成。</p>
+            <p>HIWM 会结合本次对话生成实时回应与互动建议。</p>
           </div>
         </article>
         <article>
@@ -98,34 +96,27 @@ const authorize = (): void => {
         <article>
           <span aria-hidden="true">03</span>
           <div>
-            <h3>本地派生特征</h3>
-            <p>
-              面部点位、头部姿态和语音韵律信号优先在本地计算，它们只表示可观察的交互线索。你主动填写的初始信息会保存在本机，直到主动清除。
-            </p>
+            <h3>互动感知</h3>
+            <p>帮助理解面部动作、姿态和语音节奏。你填写的会话背景可随时修改或清除。</p>
           </div>
         </article>
         <article>
           <span aria-hidden="true">04</span>
           <div>
-            <h3>发送到后端的内容</h3>
-            <p>
-              语音转录、你主动填写的初始信息、受限的派生特征摘要和最近一帧摄像头画面会发送到百炼云端模型，用于当前会话的预测、评估和回应。
-            </p>
+            <h3>智能分析</h3>
+            <p>结合对话内容和必要的画面信息，为本次互动生成分析结果与回应。</p>
           </div>
         </article>
       </div>
 
       <div class="privacy-note">
         <strong>默认不保存原始音视频</strong>
-        <p>
-          {{ derivedRetentionLabel }}。派生事件会保存在本机浏览器中（每个会话最多 200
-          条），直到你点击“删除会话”或清理浏览器数据；服务端的预测锁记录会同步执行删除。不将视觉或语音线索宣称为对内心状态的事实判定。
-        </p>
+        <p>{{ derivedRetentionLabel }}，并可随时删除。感知结果仅作为互动参考。</p>
       </div>
 
       <label class="acknowledge">
         <input v-model="acknowledged" type="checkbox" :disabled="busy" />
-        <span>我已了解上述用途，并同意在本次会话中启用这些功能。</span>
+        <span>我已了解并同意在本次互动中启用这些功能。</span>
       </label>
 
       <footer>

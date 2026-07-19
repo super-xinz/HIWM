@@ -1125,7 +1125,7 @@ export const buildTimelineEvents = (snapshot: HiwmSnapshot): HiwmTimelineEvent[]
       createEvent('visual_evidence_observed', snapshot.observation.camera.observed_at, {
         modality: 'visual',
         kind: 'face_features',
-        label: '摄像头证据已采集，当前没有可回放的派生面部特征',
+        label: '摄像头信息已就绪，暂时没有可展示的面部线索',
         source_evidence_id: snapshot.observation.camera.evidence_id,
         stream_key: snapshot.observation.camera.stream_key || null,
         value: null,
@@ -1373,7 +1373,7 @@ export const useHiwmStore = defineStore('hiwmStore', {
           this.turnId = backendError.turn_id
           this.error = backendError.message
         } else {
-          this.error = 'HIWM 后端错误元数据格式无效'
+          this.error = '分析结果暂时无法识别'
         }
         return
       }
@@ -1389,7 +1389,7 @@ export const useHiwmStore = defineStore('hiwmStore', {
       }
       if (!isSnapshot(snapshot)) {
         this.clearTurnSnapshot()
-        this.error = 'HIWM 后端快照格式无效'
+        this.error = '分析结果格式暂时无法识别'
         return
       }
 

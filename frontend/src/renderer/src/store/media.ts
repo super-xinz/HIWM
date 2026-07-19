@@ -85,7 +85,7 @@ export const useMediaStore = defineStore('mediaStore', {
         this.webcamAccessed = false
         this.videoRequired = requireVideo
         if (!navigator.mediaDevices) {
-          throw new Error('无法获取真实媒体设备，请使用 localhost 或 HTTPS 访问')
+          throw new Error('无法访问摄像头或麦克风，请通过安全链接打开页面')
         }
 
         // Keep getUserMedia in the original click call stack. Safari may require a
@@ -120,7 +120,7 @@ export const useMediaStore = defineStore('mediaStore', {
           if (requireVideo) this.hasCameraPermission = false
         }
         this.permissionError = describeMediaAccessError(err, requireVideo)
-        message.error(`无法开始真实会话：${this.permissionError}`)
+        message.error(`暂时无法开始互动：${this.permissionError}`)
         return false
       } finally {
         this.permissionPending = false
@@ -175,7 +175,7 @@ export const useMediaStore = defineStore('mediaStore', {
         await this.fillStream(audioDeviceId, videoDeviceId)
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
-        message.error(`切换真实媒体设备失败：${errorMessage}`)
+        message.error(`切换设备失败：${errorMessage}`)
       }
     },
     async updateAvailableDevices() {
@@ -193,9 +193,7 @@ export const useMediaStore = defineStore('mediaStore', {
       this.hasCamera =
         devices.some((device) => device.kind === 'videoinput') && this.hasCameraPermission
       if (!this.hasMic || (this.videoRequired && !this.hasCamera)) {
-        throw new Error(
-          !this.hasMic ? '未检测到真实麦克风' : '当前模型需要摄像头，但未检测到真实摄像头'
-        )
+        throw new Error(!this.hasMic ? '未检测到麦克风' : '当前体验需要摄像头，但未检测到可用设备')
       }
 
       const localStream = await getStream(
@@ -224,9 +222,7 @@ export const useMediaStore = defineStore('mediaStore', {
         .some((track) => track.readyState === 'live')
       if (!hasRealAudioTrack || (this.videoRequired && !hasRealVideoTrack)) {
         localStream.getTracks().forEach((track) => track.stop())
-        throw new Error(
-          !hasRealAudioTrack ? '真实麦克风轨道不可用' : '当前模型需要摄像头，但真实摄像头轨道不可用'
-        )
+        throw new Error(!hasRealAudioTrack ? '麦克风暂不可用' : '摄像头暂不可用')
       }
 
       this.stream?.getTracks().forEach((track) => track.stop())

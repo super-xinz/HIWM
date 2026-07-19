@@ -11,7 +11,6 @@ import { useAppStore } from './store/app'
 import { useMediaStore } from './store/media'
 import { type AnalysisConsentRecord, usePerceptionStore } from './store/perception'
 import { isDashscopeRuntimeKeyReady } from './interface/apiConfig'
-import { writeRuntimeControlToken } from './utils/projectStorage'
 
 const appState = useAppStore()
 const mediaState = useMediaStore()
@@ -29,40 +28,22 @@ const videoRequired = computed(() => {
   return modalities ? modalities.includes('image') : true
 })
 
-const completeSetup = async (
-  decision: AnalysisConsentRecord,
-  apiKey: string,
-  accessToken: string
-): Promise<void> => {
+const completeSetup = async (decision: AnalysisConsentRecord): Promise<void> => {
   if (setupBusy.value) return
   setupBusy.value = true
   setupError.value = null
 
-  if (appState.runtimeControlAuthRequired) {
-    writeRuntimeControlToken(accessToken)
+  if (!isDashscopeRuntimeKeyReady(appState.apiConfig)) {
+    setupError.value = 'AI 服务正在准备，请稍后重试'
+    setupBusy.value = false
+    return
   }
 
-  // Start getUserMedia synchronously from the original button gesture. Key
-  // configuration runs in parallel so the app still needs only one click.
-  const mediaPromise = mediaState.webcamAccessed
-    ? Promise.resolve(true)
-    : mediaState.accessDevice(videoRequired.value)
-  const keyPromise = apiKey
-    ? appState.configureRuntimeApiKey(apiKey)
-    : Promise.resolve(isDashscopeRuntimeKeyReady(appState.apiConfig))
+  const mediaReady = mediaState.webcamAccessed
+    ? true
+    : await mediaState.accessDevice(videoRequired.value)
 
-  const [mediaResult, keyResult] = await Promise.allSettled([mediaPromise, keyPromise])
-  const mediaReady = mediaResult.status === 'fulfilled' && mediaResult.value
-  const keyReady = keyResult.status === 'fulfilled' && keyResult.value
-
-  if (!keyReady) {
-    setupError.value =
-      keyResult.status === 'rejected'
-        ? keyResult.reason instanceof Error
-          ? keyResult.reason.message
-          : String(keyResult.reason)
-        : '请先输入有效的 DashScope API Key'
-  } else if (!mediaReady) {
+  if (!mediaReady) {
     setupError.value = mediaState.permissionError || '设备权限尚未开启，请检查后重试'
   } else {
     perceptionState.setAnalysisAuthorized(true, decision)
@@ -80,9 +61,7 @@ const completeSetup = async (
         :visible="setupVisible"
         :busy="setupBusy"
         :error="setupError"
-        :access-control-required="appState.runtimeControlAuthRequired"
         consent-version="hiwm-demo-1.0"
-        derived-retention-label="派生事件最多保留 200 条；服务端预测锁可由你主动删除"
         @start="completeSetup"
       />
       <template v-if="chatMode === 'ws'">

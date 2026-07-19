@@ -245,7 +245,7 @@ test('two or four action snapshots are rejected without overwriting accepted his
 
     store.consumeAvatarMetadata({ hiwm: invalid })
 
-    assert.equal(store.error, 'HIWM 后端快照格式无效')
+    assert.equal(store.error, '分析结果格式暂时无法识别')
     assert.equal(store.turnId, '')
     assert.deepEqual(
       store.timeline.map((event) => event.event_id),
