@@ -257,6 +257,7 @@ from service.frontend_service import (
     build_public_api_config,
     configure_runtime_api_key,
     require_runtime_control_access,
+    runtime_control_auth_required,
     register_frontend,
     register_hiwm_replay,
 )
@@ -584,6 +585,9 @@ class ClientHandlerRtc(ClientHandlerBase):
                     "debug": False,
                 },
                 "capabilities": {
+                    "runtime_control_auth": (
+                        "bearer" if runtime_control_auth_required() else None
+                    ),
                     "face_landmarks": "client" if hiwm_enabled else None,
                     "prosody": "client" if hiwm_enabled else None,
                     "initial_profile": "client_confirmed_session_text" if hiwm_enabled else None,

@@ -28,10 +28,18 @@ const videoRequired = computed(() => {
   return modalities ? modalities.includes('image') : true
 })
 
-const completeSetup = async (decision: AnalysisConsentRecord, apiKey: string): Promise<void> => {
+const completeSetup = async (
+  decision: AnalysisConsentRecord,
+  apiKey: string,
+  accessToken: string
+): Promise<void> => {
   if (setupBusy.value) return
   setupBusy.value = true
   setupError.value = null
+
+  if (appState.runtimeControlAuthRequired) {
+    localStorage.setItem('auth_openavatarchat', accessToken)
+  }
 
   // Start getUserMedia synchronously from the original button gesture. Key
   // configuration runs in parallel so the app still needs only one click.
@@ -71,6 +79,7 @@ const completeSetup = async (decision: AnalysisConsentRecord, apiKey: string): P
         :visible="setupVisible"
         :busy="setupBusy"
         :error="setupError"
+        :access-control-required="appState.runtimeControlAuthRequired"
         consent-version="hiwm-demo-1.0"
         derived-retention-label="派生事件最多保留 200 条；服务端预测锁可由你主动删除"
         @start="completeSetup"

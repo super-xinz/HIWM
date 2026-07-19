@@ -22,6 +22,7 @@ const props = withDefaults(
     error?: string | null
     consentVersion?: string
     derivedRetentionLabel?: string
+    accessControlRequired?: boolean
   }>(),
   {
     visible: true,
@@ -29,11 +30,12 @@ const props = withDefaults(
     error: null,
     consentVersion: 'hiwm-demo-1.0',
     derivedRetentionLabel: '派生事件最多保留 200 条；服务端预测锁可由你主动删除',
+    accessControlRequired: false,
   }
 )
 
 const emit = defineEmits<{
-  start: [decision: AnalysisConsentRecord, apiKey: string]
+  start: [decision: AnalysisConsentRecord, apiKey: string, accessToken: string]
 }>()
 
 const appState = useAppStore()
@@ -42,11 +44,15 @@ const { apiConfig, apiConfigStatus } = storeToRefs(appState)
 const { permissionError } = storeToRefs(mediaState)
 
 const apiKey = ref('')
+const accessToken = ref(
+  typeof window === 'undefined' ? '' : localStorage.getItem('auth_openavatarchat') || ''
+)
 const revealKey = ref(false)
 
 const keyRequired = computed(() => isDashscopeRuntimeKeyRequired(apiConfig.value))
 const keyConfigured = computed(() => isDashscopeRuntimeKeyReady(apiConfig.value))
 const normalizedKey = computed(() => apiKey.value.trim())
+const normalizedAccessToken = computed(() => accessToken.value.trim())
 const videoRequired = computed(() => {
   const modalities = apiConfig.value?.hiwm?.input_modalities
   return modalities ? modalities.includes('image') : true
@@ -56,6 +62,7 @@ const canStart = computed(
   () =>
     !props.busy &&
     apiConfigStatus.value === 'ready' &&
+    (!props.accessControlRequired || normalizedAccessToken.value.length >= 16) &&
     (keyConfigured.value || normalizedKey.value.length >= 8)
 )
 const actionLabel = computed(() => {
@@ -98,7 +105,7 @@ const createDecision = (): AnalysisConsentRecord =>
 
 const start = (): void => {
   if (!canStart.value) return
-  emit('start', createDecision(), normalizedKey.value)
+  emit('start', createDecision(), normalizedKey.value, normalizedAccessToken.value)
 }
 </script>
 
@@ -172,9 +179,24 @@ const start = (): void => {
               </button>
             </div>
 
+            <div v-if="accessControlRequired" class="access-token-field">
+              <label for="hiwm-access-token">访问密码</label>
+              <input
+                id="hiwm-access-token"
+                v-model="accessToken"
+                type="password"
+                name="hiwm-access-token"
+                autocomplete="current-password"
+                placeholder="请输入部署时设置的访问密码"
+                :disabled="busy"
+                @keyup.enter="start"
+              />
+              <small>用于阻止其他人调用你的模型额度；只保存在当前浏览器。</small>
+            </div>
+
             <p class="memory-note">
               <SafetyCertificateOutlined />
-              Key 只发送到当前本机服务的进程内存，不写入 .env、不存入浏览器，也不会由服务端回传。
+              Key 只发送到当前服务的进程内存，不写入 .env、不存入浏览器，也不会由服务端回传。
             </p>
           </section>
 
@@ -435,6 +457,43 @@ const start = (): void => {
     color: #148267;
     background: #edf8f4;
     outline: none;
+  }
+}
+
+.access-token-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 11px;
+
+  label {
+    color: #344a42;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  input {
+    width: 100%;
+    height: 42px;
+    box-sizing: border-box;
+    padding: 0 13px;
+    color: #24352f;
+    border: 1px solid #cfdcd6;
+    border-radius: 10px;
+    background: #fff;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 12px;
+    outline: none;
+
+    &:focus {
+      border-color: #148267;
+      box-shadow: 0 0 0 3px rgba(20, 130, 103, 0.14);
+    }
+  }
+
+  small {
+    color: #65756f;
+    font-size: 10px;
+    line-height: 1.45;
   }
 }
 

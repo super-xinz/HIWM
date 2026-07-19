@@ -198,7 +198,7 @@ const configuredClass = (config: PublicApiServiceConfig | null): string => {
 
     <footer v-if="permissionMode">
       <span aria-hidden="true">●</span>
-      配置详情始终脱敏；你在本页提交的 Key 只进入本机服务内存，不写入 .env 或浏览器存储
+      配置详情始终脱敏；你在本页提交的 Key 只进入当前服务内存，不写入 .env 或浏览器存储
     </footer>
     <footer v-else>
       <span aria-hidden="true">●</span>

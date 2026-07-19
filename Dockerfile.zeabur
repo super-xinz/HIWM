@@ -1,0 +1,52 @@
+FROM node:22-bookworm-slim AS frontend-builder
+
+WORKDIR /build/frontend
+RUN corepack enable
+COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./frontend/pnpm-workspace.yaml ./frontend/.npmrc ./
+RUN HUSKY=0 pnpm install --frozen-lockfile
+COPY ./frontend ./
+RUN pnpm run build
+
+
+FROM python:3.11-slim-bookworm AS runtime
+
+LABEL org.opencontainers.image.title="HIWM Interaction Demo" \
+      org.opencontainers.image.description="CPU deployment for Zeabur" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app:/app/src \
+    HIWM_CONFIG=config/chat_with_hiwm_zeabur.yaml
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libglib2.0-0 \
+        libgomp1 \
+        libopus0 \
+        libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY ./requirements-zeabur.txt ./requirements-zeabur.txt
+RUN python -m pip install --upgrade pip setuptools wheel \
+    && python -m pip install -r requirements-zeabur.txt
+
+COPY ./src ./src
+COPY ./scripts ./scripts
+COPY ./config ./config
+COPY ./resource ./resource
+COPY --from=frontend-builder /build/frontend/dist ./frontend/dist
+
+RUN chmod 755 ./scripts/start_zeabur.sh \
+    && mkdir -p ./temp/hiwm_ledger
+
+ENV PORT=8080
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+    CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.getenv('PORT','8080')+'/liveness', timeout=3)" || exit 1
+
+ENTRYPOINT ["./scripts/start_zeabur.sh"]

@@ -177,3 +177,22 @@ def test_delete_session_rejects_invalid_id_and_disabled_hiwm(tmp_path: Path):
         )
     assert disabled.status_code == 404
     assert disabled.json() == {"detail": "HIWM is not enabled"}
+
+
+def test_replay_requires_bearer_token_when_cloud_access_is_enabled(
+    tmp_path: Path, monkeypatch
+):
+    token = "deployment-access-token"
+    monkeypatch.setenv("HIWM_RUNTIME_CONTROL_TOKEN", token)
+
+    with _replay_client(tmp_path) as client:
+        denied = client.get(
+            "/openavatarchat/hiwm/sessions/cloud-session/timeline"
+        )
+        allowed = client.get(
+            "/openavatarchat/hiwm/sessions/cloud-session/timeline",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert denied.status_code == 403
+    assert allowed.status_code == 200

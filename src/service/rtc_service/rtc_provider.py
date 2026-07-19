@@ -1,4 +1,5 @@
-from typing import Dict, Union
+import os
+from typing import Dict, Optional, Union
 
 import pydantic
 from loguru import logger
@@ -17,6 +18,24 @@ class RTCProvider(metaclass=SingletonMeta):
             "turn_server": TurnServerProvider(),
         }
 
+    @staticmethod
+    def _runtime_turn_config() -> Optional[Dict]:
+        urls = [
+            item.strip()
+            for item in os.environ.get("HIWM_TURN_URLS", "").split(",")
+            if item.strip()
+        ]
+        username = os.environ.get("HIWM_TURN_USERNAME", "").strip()
+        credential = os.environ.get("HIWM_TURN_CREDENTIAL", "").strip()
+        if not urls:
+            return None
+        return {
+            "turn_provider": "turn_server",
+            "urls": urls,
+            "username": username,
+            "credential": credential,
+        }
+
     def prepare_rtc_configuration(self, config: Union[ServiceConfigData, BaseModel, Dict]):
         turn_entity = None
         if isinstance(config, ServiceConfigData):
@@ -27,8 +46,15 @@ class RTCProvider(metaclass=SingletonMeta):
             rtc_config = config
         else:
             rtc_config = None
+        if rtc_config is None:
+            rtc_config = self._runtime_turn_config()
         if rtc_config is not None:
-            logger.info(f"Parsing RTC config: {rtc_config}")
+            configured_urls = rtc_config.get("urls") or []
+            logger.info(
+                "Parsing RTC config: provider={}, url_count={}",
+                rtc_config.get("turn_provider"),
+                len(configured_urls),
+            )
             turn_provider_name = rtc_config.get("turn_provider")
             turn_provider = None
             turn_provider_config = None

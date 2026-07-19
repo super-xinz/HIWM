@@ -6,13 +6,14 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from engine_utils.directory_info import DirectoryInfo
 from handlers.hiwm.ledger import ImmutableJSONLLedger
 from handlers.hiwm.models import LockedPredictionRecord, LockedSafetyFallbackRecord
+from .runtime_control import require_runtime_control_access, runtime_control_auth_required
 
 
 _SAFE_SESSION_ID = re.compile(r"^[A-Za-z0-9_.-]{1,160}$")
@@ -82,7 +83,9 @@ def register_hiwm_replay(app: FastAPI, handler_manager: Any) -> None:
     """Register bounded, local-session replay and deletion endpoints."""
 
     @app.get("/openavatarchat/hiwm/sessions/{session_id}/timeline")
-    async def get_hiwm_timeline(session_id: str):
+    async def get_hiwm_timeline(session_id: str, request: Request):
+        if runtime_control_auth_required():
+            require_runtime_control_access(request)
         root = resolve_ledger_root(handler_manager)
         if root is None:
             raise HTTPException(status_code=404, detail="HIWM is not enabled")
@@ -100,7 +103,9 @@ def register_hiwm_replay(app: FastAPI, handler_manager: Any) -> None:
         )
 
     @app.delete("/openavatarchat/hiwm/sessions/{session_id}")
-    async def delete_hiwm_session(session_id: str):
+    async def delete_hiwm_session(session_id: str, request: Request):
+        if runtime_control_auth_required():
+            require_runtime_control_access(request)
         root = resolve_ledger_root(handler_manager)
         if root is None:
             raise HTTPException(status_code=404, detail="HIWM is not enabled")

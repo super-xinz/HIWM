@@ -1,0 +1,73 @@
+default:
+  logger:
+    log_level: "INFO"
+  service:
+    # Zeabur terminates HTTPS and forwards traffic to this container port.
+    host: "0.0.0.0"
+    port: 8080
+
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 1
+    handler_search_path:
+      - "src/handlers"
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        connection_ttl: 900
+
+      InterruptHandler:
+        module: logic/interrupt/interrupt_handler
+
+      SileroVad:
+        module: vad/silerovad/vad_handler_silero
+        speaking_threshold: 0.5
+        start_delay: 2048
+        end_delay: 5000
+        buffer_look_back: 5000
+        speech_padding: 512
+
+      BailianASR:
+        module: asr/bailian_asr/asr_handler_bailian
+        model_name: "fun-asr-realtime"
+        sample_rate: 16000
+        format: "pcm"
+        dump_audio: false
+        semantic_punctuation_enabled: true
+        language_hints: ["zh"]
+
+      BailianTTS:
+        module: tts/bailian_tts/tts_handler_cosyvoice_bailian
+        model_name: "cosyvoice-v3-flash"
+        voice: "longxing_v3"
+        sample_rate: 24000
+
+      HIWM:
+        module: hiwm/hiwm_handler
+        model_name: "qwen3-vl-flash"
+        api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        api_key_env: "DASHSCOPE_API_KEY"
+        temperature: 0.2
+        input_modalities: ["text", "image"]
+        structured_output: true
+        enable_thinking: false
+        objective: "在尊重用户自主性且不臆测隐藏心理的前提下，准确回应当前问题并推进一个可验证的下一步。"
+        request_timeout_seconds: 30
+        max_output_tokens: 2048
+        max_attempts: 2
+        history_max_events: 20
+        ledger_dir: "temp/hiwm_ledger"
+        require_asr_audio_ancestry: true
+        camera_capture_interval_ms: 1000
+        camera_max_age_seconds: 5
+        fallback_action: "clarify"
+        fallback_utterance: "我暂时无法可靠地生成下一步预测。可以请你换一种说法，或稍后再试吗？"
+        planner:
+          goal: 1.0
+          risk: 1.25
+          uncertainty: 0.6
+          information_gain: 0.35
+        safety_policy:
+          min_goal_probability: 0.3
+          max_risk_probability: 0.7
+          max_uncertainty: 0.75

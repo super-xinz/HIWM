@@ -7,6 +7,7 @@ from starlette.requests import Request
 from service.frontend_service.runtime_control import (
     RUNTIME_CONTROL_TOKEN_ENV,
     require_runtime_control_access,
+    runtime_control_auth_required,
 )
 
 
@@ -45,3 +46,23 @@ def test_runtime_control_accepts_matching_remote_bearer_token(monkeypatch):
         require_runtime_control_access(
             _request("192.0.2.10", authorization="Bearer wrong-token")
         )
+
+
+def test_runtime_control_requires_configured_token_behind_loopback_proxy(monkeypatch):
+    token = "runtime-control-unit-test-token"
+    monkeypatch.setenv(RUNTIME_CONTROL_TOKEN_ENV, token)
+
+    with pytest.raises(HTTPException):
+        require_runtime_control_access(_request("127.0.0.1"))
+
+    require_runtime_control_access(
+        _request("127.0.0.1", authorization=f"Bearer {token}")
+    )
+
+
+def test_runtime_control_reports_when_remote_auth_is_configured(monkeypatch):
+    monkeypatch.delenv(RUNTIME_CONTROL_TOKEN_ENV, raising=False)
+    assert runtime_control_auth_required() is False
+
+    monkeypatch.setenv(RUNTIME_CONTROL_TOKEN_ENV, "  deployment-access-token  ")
+    assert runtime_control_auth_required() is True

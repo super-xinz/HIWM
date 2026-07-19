@@ -31,6 +31,7 @@ interface AppState {
   apiConfig: PublicApiConfig | null
   apiConfigStatus: ApiConfigLoadState
   apiConfigError: string | null
+  runtimeControlAuthRequired: boolean
 
   toolsVisible: boolean
   inputVisible: boolean
@@ -48,6 +49,7 @@ export const useAppStore = defineStore('appStore', {
     apiConfig: null,
     apiConfigStatus: 'loading',
     apiConfigError: null,
+    runtimeControlAuthRequired: false,
     toolsVisible: true,
     inputVisible: true,
   }),
@@ -79,6 +81,7 @@ export const useAppStore = defineStore('appStore', {
               this.apiConfigError = result.reason
             }
           }
+          this.runtimeControlAuthRequired = config.capabilities?.runtime_control_auth === 'bearer'
           if (config.rtc_configuration) {
             this.rtcConfig = config.rtc_configuration
           }
@@ -125,7 +128,7 @@ export const useAppStore = defineStore('appStore', {
         const detail =
           payload && typeof payload.detail === 'string'
             ? payload.detail
-            : 'API Key 配置失败，请检查本机服务后重试'
+            : 'API Key 配置失败，请检查当前服务后重试'
         throw new Error(detail)
       }
       const result = parsePublicApiConfig(payload?.api_config)
