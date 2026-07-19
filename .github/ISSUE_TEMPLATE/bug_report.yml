@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a reproducible problem without sharing sensitive data.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include API keys, raw media, real conversation data, model responses, or private logs.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: 0.1.0 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Python service
+        - Web client
+        - Electron client
+        - Documentation or setup
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Include expected behavior and a minimal, sanitized reproduction.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Checks performed
+      description: List tests, build commands, and whether real device hardware was involved.

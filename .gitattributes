@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.md whitespace=-trailing-space,-blank-at-eof
+
+*.feather binary
+*.jpeg binary
+*.jpg binary
+*.onnx binary
+*.png binary
+*.zip binary

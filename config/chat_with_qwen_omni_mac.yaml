@@ -1,0 +1,50 @@
+default:
+  logger:
+    log_level: "INFO"
+  service:
+    # localhost remains a browser secure context for camera/microphone access.
+    # Port 8282 is already used by another local service on this Mac.
+    host: "127.0.0.1"
+    port: 8283
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 1
+    handler_search_path:
+      - "src/handlers"
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        connection_ttl: 900
+
+      InterruptHandler:
+        module: logic/interrupt/interrupt_handler
+
+      # This bundled ONNX VAD runs with the CPU provider on macOS.
+      SileroVad:
+        module: vad/silerovad/vad_handler_silero
+        speaking_threshold: 0.5
+        start_delay: 2048
+        end_delay: 5000
+        buffer_look_back: 5000
+        speech_padding: 512
+
+      # One cloud model handles live speech, camera frames, reasoning,
+      # text output, and synthesized speech. It reads DASHSCOPE_API_KEY
+      # from the project-root .env file.
+      QwenOmni:
+        enabled: true
+        module: llm/qwen_omni/llm_handler_qwen_omni
+        model_name: "qwen-omni-turbo-realtime"
+        voice: "Serena"
+        enable_video_input: true
+        video_frame_interval_ms: 1000
+        enable_text_output: true
+        input_audio_format: "PCM_16000HZ_MONO_16BIT"
+        output_audio_format: "PCM_24000HZ_MONO_16BIT"
+        enable_turn_detection: false
+        enable_input_transcription: false
+        transcription_model: "gummy-realtime-v1"
+
+      # No LiteAvatar/MuseTalk/FlashHead handler here: their upstream
+      # implementations require NVIDIA CUDA. The WebUI uses audio-only mode,
+      # while the user's camera stream still reaches Qwen-Omni.

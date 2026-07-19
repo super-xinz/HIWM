@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: macos-14
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        run: uv sync --locked
+
+      - name: Run Python tests
+        run: uv run --locked pytest -q
+
+      - name: Check Python and shell syntax
+        run: |
+          uv run --locked python -m compileall -q src scripts tests
+          bash -n scripts/setup_macos.sh scripts/start_macos.sh
+
+      - name: Lint project-owned Python paths
+        run: >-
+          uv run --locked ruff check
+          scripts/smoke_cloud.py
+          scripts/supervise_macos.py
+          src/handlers/hiwm
+          src/chat_engine/data_models/client_perception.py
+          src/chat_engine/data_models/client_profile.py
+          src/handlers/client/rtc_client/playback_lifecycle.py
+          src/service/frontend_service/api_config.py
+          src/service/frontend_service/frontend_service.py
+          src/service/frontend_service/hiwm_replay.py
+          tests
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.10.0
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+        env:
+          HUSKY: '0'
+
+      - run: pnpm run check
+      - run: pnpm run build
+
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - run: npm ci
+      - run: npm run docs:build
+        env:
+          VITEPRESS_BASE: /

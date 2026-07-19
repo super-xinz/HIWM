@@ -1,0 +1,6 @@
+allowBuilds:
+  core-js: false
+  electron: true
+  esbuild: true
+  simple-git-hooks: false
+  vue-demi: true

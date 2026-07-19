@@ -1,0 +1,38 @@
+appId: org.hiwm.interaction-demo
+productName: HIWM Interaction Demo
+directories:
+  output: dist-electron/release
+  buildResources: build
+files:
+  - "dist-electron/out/**/*"
+asarUnpack:
+  - resources/**
+win:
+  executableName: hiwm-interaction-demo
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    - NSCameraUsageDescription: Application requests access to the device's camera.
+    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+  notarize: false
+dmg:
+  artifactName: ${name}-${version}.${ext}
+linux:
+  target:
+    - AppImage
+    - snap
+    - deb
+  maintainer: HIWM Interaction Demo contributors
+  category: Utility
+appImage:
+  artifactName: ${name}-${version}.${ext}
+npmRebuild: false
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/
