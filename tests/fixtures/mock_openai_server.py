@@ -13,6 +13,16 @@ from fastapi.responses import StreamingResponse
 app = FastAPI()
 
 
+@app.get("/v1/models")
+async def list_models():
+    return {
+        "object": "list",
+        "data": [
+            {"id": "deepseek-v4-flash", "object": "model", "owned_by": "deepseek"}
+        ],
+    }
+
+
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request):
     body = await request.json()

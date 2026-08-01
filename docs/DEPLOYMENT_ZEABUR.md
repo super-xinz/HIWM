@@ -74,9 +74,9 @@ Dockerfile path 相对 Service build root。若控制台未读取 `zbpack.json`�
 
 | 变量 | 必需 | 敏感 | 说明 |
 | --- | ---: | ---: | --- |
-| `LLM_API_BASE_URL` | 是 | 否 | 原模型 OpenAI-compatible Base URL |
+| `LLM_API_BASE_URL=https://api.deepseek.com` | 是 | 否 | DeepSeek 官方 OpenAI-compatible Base URL |
 | `LLM_API_KEY` | 是 | 是 | 只在 FastAPI 服务端读取 |
-| `LLM_MODEL` | 是 | 否 | 模型名 |
+| `LLM_MODEL=deepseek-v4-flash` | 是 | 否 | DeepSeek V4 Flash API 模型标识 |
 | `LLM_TIMEOUT_MS=60000` | 是 | 否 | LLM 总超时 |
 | `PROFILE_ENGINE_BASE_URL` | 是 | 否 | profile Service 的项目内 URL；无内部 URL时使用其受 Key 保护的 HTTPS 域名 |
 | `PROFILE_ENGINE_API_KEY` | 是 | 是 | 必须与 `PROFILE_TENANT_API_KEYS[demo-tenant]` 相同 |
@@ -95,6 +95,8 @@ Dockerfile path 相对 Service build root。若控制台未读取 `zbpack.json`�
 | `HIWM_TURN_URLS`/用户名/凭据 | 跨网 RTC 时 | 是 | 可选 TURN |
 
 密钥不得使用 `VITE_`、`NEXT_PUBLIC_` 等前端公开前缀。Zeabur Variables 页支持 Raw 编辑和 `${VARIABLE}` 引用；保存变量后执行 Redeploy。
+
+DeepSeek V4 Flash 使用官方模型标识 `deepseek-v4-flash`。部署前可在本地 `.env` 填入同一 Key 后运行 `python scripts/check_deepseek.py`；线上则以完整 Chat 冒烟脚本为最终连通性标准。健康检查中的 `llm=configured` 仅表示变量存在，不代表 Key、余额和模型权限已验证。
 
 ## 7. 持久化
 

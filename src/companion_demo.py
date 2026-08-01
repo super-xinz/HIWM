@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +19,11 @@ from fastapi.staticfiles import StaticFiles
 from project_identity import API_VERSION, PROJECT_NAME, PROJECT_SLUG, PROJECT_VERSION
 from service.companion_service import register_companion_api
 from service.companion_service.config import CompanionSettings
+
+
+# Local operators can copy .env.example to .env. Zeabur still injects the
+# same values as service variables and takes precedence over this file.
+load_dotenv()
 
 
 def create_app(settings: CompanionSettings | None = None) -> FastAPI:
