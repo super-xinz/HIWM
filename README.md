@@ -1,5 +1,7 @@
 # HIWM Interaction Engine
 
+新增“画像聊天”默认入口：Vue 三栏控制台通过同源 FastAPI BFF 串联模型与画像引擎，并在服务端保管全部凭证。交付文档见 [聊天集成](docs/CHATBOT_INTEGRATION.md)、[API 使用](docs/API_USAGE.md)、[Zeabur 部署](docs/DEPLOYMENT_ZEABUR.md) 和 [实施报告](IMPLEMENTATION_REPORT.md)。
+
 **人际互动世界模型（Human Interaction World Model, HIWM）的交互决策演示平台。**
 
 [English](README.en.md) · [项目架构](docs/guides/project-architecture.zh-CN.md) · [运行架构](docs/guides/hiwm-runtime.md) · [API v1](docs/guides/api-v1.md) · [0.2.0 验收](docs/reports/acceptance-2026-07-19-v0.2.zh-CN.md)

@@ -8,6 +8,67 @@ export function initConfig(): Promise<Response> {
   return fetch('/api/v1/runtime/config')
 }
 
+export function accessStatus(): Promise<Response> {
+  return fetch('/api/v1/access/status')
+}
+
+export function accessLogin(code: string): Promise<Response> {
+  return fetch('/api/v1/access/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+}
+
+export function accessLogout(): Promise<Response> {
+  return fetch('/api/v1/access/logout', { method: 'POST' })
+}
+
+export function companionHealth(): Promise<Response> {
+  return fetch('/api/v1/companion/health')
+}
+
+export function companionProfile(userId: string): Promise<Response> {
+  return fetch(`/api/v1/companion/profile/${encodeURIComponent(userId)}`)
+}
+
+export function companionMessages(sessionId: string): Promise<Response> {
+  return fetch(`/api/v1/companion/sessions/${encodeURIComponent(sessionId)}/messages`)
+}
+
+export function companionChatStream(
+  body: Record<string, unknown>,
+  signal: AbortSignal
+): Promise<Response> {
+  return fetch('/api/v1/companion/chat/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify(body),
+    signal,
+  })
+}
+
+export function clearCompanionSession(sessionId: string): Promise<Response> {
+  return fetch(`/api/v1/companion/sessions/${encodeURIComponent(sessionId)}`, {
+    method: 'DELETE',
+  })
+}
+
+export function resetCompanionProfile(userId: string): Promise<Response> {
+  return fetch(`/api/v1/companion/profile/${encodeURIComponent(userId)}/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirm: true }),
+  })
+}
+
+export function retryCompanionProfileUpdate(sessionId: string, turnId: string): Promise<Response> {
+  return fetch(
+    `/api/v1/companion/sessions/${encodeURIComponent(sessionId)}/turns/${encodeURIComponent(turnId)}/profile-update:retry`,
+    { method: 'POST' }
+  )
+}
+
 export function webrtcOffer(body: Record<string, unknown>): Promise<Response> {
   return fetch('/webrtc/offer', {
     method: 'POST',

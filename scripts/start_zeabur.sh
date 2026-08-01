@@ -3,12 +3,17 @@ set -eu
 
 PORT="${PORT:-8080}"
 CONFIG_FILE="${HIWM_CONFIG:-config/chat_with_hiwm_zeabur.yaml}"
+COMPANION_ONLY="${HIWM_COMPANION_ONLY:-true}"
 
 # The cloud handlers require a non-empty value while loading. This sentinel
 # starts the UI without granting provider access; the real key is supplied by
 # the user from the one-step setup page and remains process-memory only.
 if [ -z "${DASHSCOPE_API_KEY:-}" ]; then
   export DASHSCOPE_API_KEY="NOT_CONFIGURED_YET"
+fi
+
+if [ "$COMPANION_ONLY" = "true" ]; then
+  exec python src/companion_demo.py
 fi
 
 exec python src/demo.py \

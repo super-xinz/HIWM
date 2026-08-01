@@ -19,7 +19,9 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PYTHONPATH=/app:/app/src \
-    HIWM_CONFIG=config/chat_with_hiwm_zeabur.yaml
+    HIWM_CONFIG=config/chat_with_hiwm_zeabur.yaml \
+    COMPANION_DATABASE_URL=sqlite:////data/companion-chat.db \
+    DEMO_COOKIE_SECURE=true
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
@@ -42,7 +44,7 @@ COPY ./resource ./resource
 COPY --from=frontend-builder /build/frontend/dist ./frontend/dist
 
 RUN chmod 755 ./scripts/start_zeabur.sh \
-    && mkdir -p ./temp/hiwm_ledger
+    && mkdir -p ./temp/hiwm_ledger /data
 
 ENV PORT=8080
 EXPOSE 8080

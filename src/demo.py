@@ -16,6 +16,7 @@ from service.service_utils.logger_utils import config_loggers
 from service.service_utils.service_config_loader import load_configs
 from service.service_utils.ssl_helpers import create_ssl_context
 from project_identity import PROJECT_NAME, PROJECT_VERSION
+from service.companion_service import register_companion_api
 
 project_dir = DirectoryInfo.get_project_dir()
 if project_dir not in sys.path:
@@ -69,6 +70,7 @@ def setup_demo():
         docs_url=None,
         redoc_url=None,
     )
+    register_companion_api(app)
 
     css = """
 
