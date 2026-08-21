@@ -24,3 +24,6 @@ def test_lightweight_companion_runtime_has_health_and_public_config(tmp_path):
         config = client.get("/api/v1/runtime/config").json()
         assert config["capabilities"]["profile_aware_text_chat"] is True
         assert config["capabilities"]["realtime_media"] is False
+        assert client.get("/docs").status_code == 404
+        assert client.get("/redoc").status_code == 404
+        assert client.get("/openapi.json").status_code == 404

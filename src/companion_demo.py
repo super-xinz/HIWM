@@ -31,6 +31,9 @@ def create_app(settings: CompanionSettings | None = None) -> FastAPI:
         title=f"{PROJECT_NAME} Companion Demo",
         version=PROJECT_VERSION,
         description="Profile-aware chat BFF and HIWM web client.",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
     )
     register_companion_api(app, settings=settings)
 

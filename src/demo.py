@@ -69,6 +69,7 @@ def setup_demo():
         version=PROJECT_VERSION,
         docs_url=None,
         redoc_url=None,
+        openapi_url=None,
     )
     register_companion_api(app)
 

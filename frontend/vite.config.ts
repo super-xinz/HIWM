@@ -21,6 +21,9 @@ const proxyTarget = hasServerConfig
 const wsProxyTarget = hasServerConfig
   ? `${USE_SSL ? 'wss' : 'ws'}://${SERVER_IP}:${SERVER_PORT}`
   : undefined
+const companionOnlyBuild = process.env.HIWM_COMPANION_ONLY?.toLowerCase() === 'true'
+const mainEntry = join(__dirname, 'src', 'renderer', 'index.html')
+const managerEntry = join(__dirname, 'src', 'renderer', 'manager.html')
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -30,10 +33,9 @@ export default defineConfig({
     outDir: join(__dirname, 'dist'),
     emptyOutDir: true,
     rollupOptions: {
-      input: {
-        main: join(__dirname, 'src', 'renderer', 'index.html'),
-        manager: join(__dirname, 'src', 'renderer', 'manager.html'),
-      },
+      input: companionOnlyBuild
+        ? { main: mainEntry }
+        : { main: mainEntry, manager: managerEntry },
       output: {
         entryFileNames: `assets/[name].[hash].js`,
         chunkFileNames: `assets/[name].[hash].js`,
