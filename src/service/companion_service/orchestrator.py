@@ -17,6 +17,33 @@ from .session_store import SessionStore
 
 logger = logging.getLogger("hiwm.companion")
 
+_UPDATE_FIELD_LABELS = {
+    "extroversion": "互动活跃度",
+    "social_warmth": "社交温度",
+    "assertiveness": "表达坚定度",
+    "impulsivity": "行动即时性",
+    "openness": "开放程度",
+    "creativity": "创造倾向",
+    "depth_of_thought": "思考深度",
+    "thinking_ratio": "分析决策倾向",
+    "empathy": "共情能力",
+    "risk_tolerance": "风险接受度",
+    "structure_pref": "结构化偏好",
+    "discipline": "自律程度",
+    "adaptability": "适应能力",
+    "persistence": "持续投入度",
+    "confidence": "自信程度",
+    "optimism": "积极预期",
+    "romantic_orientation": "关系投入度",
+}
+
+_OPERATION_LABELS = {
+    "UPSERT_FACT": "已记录一项长期事实",
+    "SET_INTERACTION_PREFERENCE": "已更新沟通偏好",
+    "SET_STATE": "已更新当前状态",
+    "UPSERT_MEMORY": "已记录一项重要信息",
+}
+
 
 def _history_for_model(items: list[dict]) -> list[dict[str, str]]:
     return [
@@ -31,11 +58,12 @@ def _update_summary(result: dict) -> list[str]:
     for patch in result.get("profile_patch", [])[:5]:
         field = patch.get("field")
         if field:
-            summary.append(f"更新 {field}")
+            field_name = str(field).split(".")[-1]
+            summary.append(f"已更新{_UPDATE_FIELD_LABELS.get(field_name, '一项互动特征')}")
     for operation in result.get("runtime_operations", [])[:5]:
         operation_name = operation.get("operation")
         if operation_name:
-            summary.append(str(operation_name))
+            summary.append(_OPERATION_LABELS.get(str(operation_name), "已更新一项个性化信息"))
     if not summary and result.get("no_profile_change"):
         summary.append("本轮未发现需要写入画像的新信息")
     return summary

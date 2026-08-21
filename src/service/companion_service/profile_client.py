@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -142,6 +143,115 @@ class ProfileEngineClient:
         )
 
 
+_TRAIT_LABELS = {
+    "extroversion": "互动活跃度",
+    "social_warmth": "社交温度",
+    "assertiveness": "表达坚定度",
+    "impulsivity": "行动即时性",
+    "openness": "开放程度",
+    "creativity": "创造倾向",
+    "depth_of_thought": "思考深度",
+    "thinking_ratio": "分析决策倾向",
+    "empathy": "共情能力",
+    "risk_tolerance": "风险接受度",
+    "structure_pref": "结构化偏好",
+    "discipline": "自律程度",
+    "adaptability": "适应能力",
+    "persistence": "持续投入度",
+    "confidence": "自信程度",
+    "optimism": "积极预期",
+    "romantic_orientation": "关系投入度",
+}
+
+_GROUP_LABELS = {
+    "energy_mode": "互动节奏",
+    "cognition_mode": "信息处理",
+    "decision_mode": "决策方式",
+    "action_mode": "行动方式",
+    "self_system": "自我调节",
+    "emotion_relation_mode": "情绪与关系",
+}
+
+_PREFERENCE_LABELS = {
+    "response_length": "回复长度",
+    "directness": "表达直接度",
+    "empathy_first": "共情优先",
+    "question_load": "提问密度",
+    "humor_level": "幽默程度",
+}
+
+_STATE_LABELS = {
+    "emotion": "当前情绪",
+    "stress_level": "压力水平",
+    "energy_level": "精力水平",
+}
+
+_VALUE_LABELS = {
+    "short": "简短",
+    "long": "详细",
+    "low": "较低",
+    "medium": "适中",
+    "high": "较高",
+    "true": "是",
+    "false": "否",
+}
+
+
+def _presentation_text(value: object) -> object:
+    """Remove internal methodology labels from browser-facing profile content."""
+    if isinstance(value, str):
+        text = re.sub(r"数字(?:密码|学)(?:\s*[0-9]{4})?", "初始画像线索", value, flags=re.IGNORECASE)
+        text = re.sub(r"生命灵数|生命数|生日数|天赋数", "初始画像线索", text)
+        text = re.sub(r"MBTI", "偏好倾向", text, flags=re.IGNORECASE)
+        text = re.sub(r"\b[IE][NS][FT][JP](?:-[AT])?\b", "偏好倾向", text, flags=re.IGNORECASE)
+        text = re.sub(r"九型(?:人格|互动画像|画像|互动)?", "互动风格", text)
+        text = re.sub(r"\b[1-9]w[1-9]\b", "互动风格", text, flags=re.IGNORECASE)
+        text = re.sub(
+            r"\b(?:SX|SP|SO)/(?:SX|SP|SO)\b",
+            "关注组合",
+            text,
+            flags=re.IGNORECASE,
+        )
+        text = re.sub(r"八字|命理", "出生信息线索", text)
+        text = re.sub(
+            r"[甲乙丙丁戊己庚辛壬癸]?[木火土金水]?日主|身强|身弱|四柱|天干|地支|五行|命盘",
+            "出生信息线索",
+            text,
+        )
+        text = re.sub(r"enneagram", "interaction-style", text, flags=re.IGNORECASE)
+        text = re.sub(r"numerology", "initial-signal", text, flags=re.IGNORECASE)
+        return _VALUE_LABELS.get(text.lower(), text)
+    if isinstance(value, dict):
+        return {key: _presentation_text(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_presentation_text(item) for item in value]
+    return value
+
+
+def _public_preferences(value: object) -> dict:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        label: _presentation_text(value[key])
+        for key, label in _PREFERENCE_LABELS.items()
+        if key in value
+    }
+
+
+def _public_state(value: object) -> dict:
+    if not isinstance(value, dict):
+        return {}
+    result = {}
+    for key, label in _STATE_LABELS.items():
+        if key not in value:
+            continue
+        item = value[key]
+        if isinstance(item, dict):
+            item = item.get("value")
+        result[label] = _presentation_text(item)
+    return result
+
+
 def public_profile(data: dict | None) -> dict | None:
     if not data or not isinstance(data.get("profile"), dict):
         return None
@@ -149,7 +259,6 @@ def public_profile(data: dict | None) -> dict | None:
     meta = profile.get("meta", {})
     portrait = profile.get("portrait", {})
     runtime = profile.get("runtime", {})
-    enneagram = profile.get("enneagram_profile", {})
     traits: list[dict] = []
     for group_name, group in profile.get("core_traits", {}).items():
         if not isinstance(group, dict):
@@ -157,8 +266,8 @@ def public_profile(data: dict | None) -> dict | None:
         for name, value in group.items():
             if isinstance(value, dict) and isinstance(value.get("value"), (int, float)):
                 traits.append({
-                    "group": group_name,
-                    "name": name,
+                    "group": _GROUP_LABELS.get(group_name, "综合特征"),
+                    "name": _TRAIT_LABELS.get(name, "画像特征"),
                     "value": value["value"],
                     "confidence": value.get("confidence"),
                 })
@@ -167,15 +276,12 @@ def public_profile(data: dict | None) -> dict | None:
         "profile_version": data.get("profile_version"),
         "updated_at": meta.get("updated_at"),
         "overall_confidence": meta.get("overall_confidence"),
-        "mbti": profile.get("mbti_dimensions", {}).get("type_label"),
         "portrait": {
-            key: value.get("content") if isinstance(value, dict) else value
+            key: _presentation_text(value.get("content") if isinstance(value, dict) else value)
             for key, value in portrait.items()
             if key in {"essence", "strengths", "core_tension"}
         },
         "top_traits": traits[:6],
-        "interaction_preferences": runtime.get("interaction_preferences", {}),
-        "current_state": runtime.get("current_state", {}),
-        "memories": runtime.get("memories", [])[-8:],
-        "enneagram": enneagram.get("identity", {}),
+        "interaction_preferences": _public_preferences(runtime.get("interaction_preferences", {})),
+        "current_state": _public_state(runtime.get("current_state", {})),
     }

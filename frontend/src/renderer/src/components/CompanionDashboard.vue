@@ -3,7 +3,7 @@
     <aside class="dashboard-panel profile-panel">
       <header class="panel-heading">
         <div>
-          <span>HUMAN PROFILE</span>
+          <span>PERSONALIZED CONTEXT</span>
           <h2>人物画像</h2>
         </div>
         <button class="icon-button" title="刷新画像" @click="store.refreshProfile">↻</button>
@@ -15,7 +15,9 @@
       <template v-if="profile">
         <div class="profile-version">
           <strong>v{{ profile.profile_version || '—' }}</strong>
-          <span>置信度 {{ formatPercent(profile.overall_confidence) }}</span>
+          <span title="表示当前有效信息的覆盖与稳定程度，不代表对人的准确率">
+            画像成熟度 {{ formatPercent(profile.overall_confidence) }}
+          </span>
         </div>
         <section v-if="profile.portrait?.essence" class="profile-card emphasis">
           <span>稳定画像摘要</span>
@@ -31,7 +33,7 @@
           </div>
         </section>
         <section class="profile-card">
-          <span>高置信特征</span>
+          <span>主要互动特征</span>
           <div
             v-for="trait in profile.top_traits || []"
             :key="`${trait.group}.${trait.name}`"
@@ -100,8 +102,8 @@
     <aside class="dashboard-panel status-panel">
       <header class="panel-heading">
         <div>
-          <span>COGNITIVE STREAM</span>
-          <h2>画像变化与状态</h2>
+          <span>ADAPTIVE CONTEXT</span>
+          <h2>个性化状态</h2>
         </div>
         <button class="icon-button" title="刷新状态" @click="store.refreshHealth">↻</button>
       </header>
@@ -198,7 +200,7 @@ function serviceLabel(key: string): string {
     (
       {
         application: 'Chat API',
-        profile_engine: '画像引擎 API',
+        profile_engine: '画像能力服务',
         llm: '原模型 API',
         database: '会话数据库',
       } as Record<string, string>

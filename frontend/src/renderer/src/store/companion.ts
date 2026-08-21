@@ -33,13 +33,10 @@ export type CompanionProfile = {
   profile_version?: number
   updated_at?: string
   overall_confidence?: number
-  mbti?: string
   portrait?: Record<string, string | string[] | null>
   top_traits?: Array<{ group: string; name: string; value: number; confidence?: number }>
   interaction_preferences?: Record<string, unknown>
   current_state?: Record<string, unknown>
-  memories?: Array<Record<string, unknown>>
-  enneagram?: Record<string, unknown>
 }
 
 type Health = {

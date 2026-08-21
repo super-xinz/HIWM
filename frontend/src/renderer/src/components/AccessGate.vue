@@ -1,9 +1,9 @@
 <template>
   <div v-if="visible" class="access-gate">
     <section class="access-card" aria-labelledby="access-title">
-      <span class="access-kicker">HIWM · INTERNAL DEMO</span>
-      <h1 id="access-title">人物画像增强型对话</h1>
-      <p>该系统目前为研究与内部演示版本，请输入访问口令。</p>
+      <span class="access-kicker">HIWM · PERSONALIZED COMPANION</span>
+      <h1 id="access-title">持续理解，自然陪伴</h1>
+      <p>系统根据授权信息与持续交流逐步适应你的沟通方式，请输入访问口令。</p>
       <form @submit.prevent="submit">
         <label for="demo-access-code">访问口令</label>
         <input
@@ -20,7 +20,7 @@
           {{ busy ? '正在验证…' : '进入系统' }}
         </button>
       </form>
-      <small>系统会根据持续对话更新人物画像；画像结果不构成医学或心理诊断。</small>
+      <small>页面只展示整合后的互动结论，不公开内部计算路径；相关结果不构成医学或心理诊断。</small>
     </section>
   </div>
 </template>
