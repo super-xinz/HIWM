@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from typing import Any
+from urllib.parse import urlsplit
 
 from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI
 
@@ -24,14 +26,32 @@ class LLMClient:
             timeout=self.settings.llm_timeout_seconds,
         )
 
+    def _request_kwargs(
+        self, messages: list[dict[str, str]], *, stream: bool
+    ) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "model": self.settings.llm_model,
+            "messages": messages,
+            "temperature": 0.65,
+            "max_tokens": 600,
+            "stream": stream,
+        }
+        try:
+            endpoint_host = urlsplit(self.settings.llm_api_base_url).hostname
+        except ValueError:
+            endpoint_host = None
+        if (
+            endpoint_host
+            and endpoint_host.casefold() == "api.deepseek.com"
+            and self.settings.llm_model.casefold().startswith("deepseek-v4-")
+        ):
+            kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+        return kwargs
+
     async def chat(self, messages: list[dict[str, str]]) -> tuple[str, str]:
         try:
             response = await self._client().chat.completions.create(
-                model=self.settings.llm_model,
-                messages=messages,
-                temperature=0.65,
-                max_tokens=600,
-                stream=False,
+                **self._request_kwargs(messages, stream=False)
             )
             content = response.choices[0].message.content
             if not isinstance(content, str) or not content.strip():
@@ -45,11 +65,7 @@ class LLMClient:
     async def stream(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
         try:
             stream = await self._client().chat.completions.create(
-                model=self.settings.llm_model,
-                messages=messages,
-                temperature=0.65,
-                max_tokens=600,
-                stream=True,
+                **self._request_kwargs(messages, stream=True)
             )
             async for chunk in stream:
                 if not chunk.choices:
