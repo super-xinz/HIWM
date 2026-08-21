@@ -15,6 +15,10 @@ class DuplicateTurnError(ValueError):
     pass
 
 
+class SessionAccessError(ValueError):
+    pass
+
+
 def request_fingerprint(request: ChatRequest) -> str:
     payload = request.model_dump(mode="json", exclude={"frontend_context"})
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
@@ -75,8 +79,75 @@ class SessionStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_companion_messages_session
                     ON companion_messages(session_id, id);
+                CREATE TABLE IF NOT EXISTS companion_session_owners (
+                    session_id TEXT PRIMARY KEY,
+                    owner_id TEXT NOT NULL,
+                    user_id TEXT,
+                    created_at TEXT NOT NULL
+                );
                 """
             )
+
+    def bind_session(
+        self, session_id: str, owner_id: str, user_id: str | None = None
+    ) -> None:
+        """Bind a browser session id to one login and, after first chat, one example."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._lock, self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT owner_id,user_id FROM companion_session_owners WHERE session_id=?",
+                (session_id,),
+            ).fetchone()
+            if row is None:
+                legacy = db.execute(
+                    """SELECT 1 FROM companion_messages WHERE session_id=?
+                       UNION ALL
+                       SELECT 1 FROM companion_turns WHERE session_id=? LIMIT 1""",
+                    (session_id, session_id),
+                ).fetchone()
+                if legacy:
+                    db.rollback()
+                    raise SessionAccessError("当前登录无权访问该会话")
+                db.execute(
+                    "INSERT INTO companion_session_owners VALUES (?,?,?,?)",
+                    (session_id, owner_id, user_id, now),
+                )
+                db.commit()
+                return
+            if row["owner_id"] != owner_id:
+                db.rollback()
+                raise SessionAccessError("当前登录无权访问该会话")
+            if user_id and row["user_id"] and row["user_id"] != user_id:
+                db.rollback()
+                raise SessionAccessError("一个会话不能切换示例角色")
+            if user_id and not row["user_id"]:
+                db.execute(
+                    "UPDATE companion_session_owners SET user_id=? WHERE session_id=?",
+                    (user_id, session_id),
+                )
+            db.commit()
+
+    def authorize_session(self, session_id: str, owner_id: str) -> bool:
+        """Check an existing binding without creating rows from a read request."""
+        with self._lock, self._connect() as db:
+            row = db.execute(
+                "SELECT owner_id FROM companion_session_owners WHERE session_id=?",
+                (session_id,),
+            ).fetchone()
+            if row is None:
+                legacy = db.execute(
+                    """SELECT 1 FROM companion_messages WHERE session_id=?
+                       UNION ALL
+                       SELECT 1 FROM companion_turns WHERE session_id=? LIMIT 1""",
+                    (session_id, session_id),
+                ).fetchone()
+                if legacy:
+                    raise SessionAccessError("会话不存在")
+                return False
+            if row["owner_id"] != owner_id:
+                raise SessionAccessError("会话不存在")
+            return True
 
     def health_check(self) -> bool:
         try:
@@ -193,10 +264,33 @@ class SessionStore:
         with self._lock, self._connect() as db:
             db.execute("DELETE FROM companion_messages WHERE session_id=?", (session_id,))
             db.execute("DELETE FROM companion_turns WHERE session_id=?", (session_id,))
+            db.execute("DELETE FROM companion_session_owners WHERE session_id=?", (session_id,))
             db.commit()
 
     def clear_user(self, user_id: str) -> None:
         with self._lock, self._connect() as db:
             db.execute("DELETE FROM companion_messages WHERE user_id=?", (user_id,))
             db.execute("DELETE FROM companion_turns WHERE user_id=?", (user_id,))
+            db.commit()
+
+    def clear_owner(self, owner_id: str) -> None:
+        """Remove every demo conversation owned by one login session."""
+        with self._lock, self._connect() as db:
+            session_ids = [
+                row["session_id"]
+                for row in db.execute(
+                    "SELECT session_id FROM companion_session_owners WHERE owner_id=?",
+                    (owner_id,),
+                ).fetchall()
+            ]
+            for session_id in session_ids:
+                db.execute(
+                    "DELETE FROM companion_messages WHERE session_id=?", (session_id,)
+                )
+                db.execute(
+                    "DELETE FROM companion_turns WHERE session_id=?", (session_id,)
+                )
+            db.execute(
+                "DELETE FROM companion_session_owners WHERE owner_id=?", (owner_id,)
+            )
             db.commit()

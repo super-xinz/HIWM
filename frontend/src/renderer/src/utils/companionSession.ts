@@ -16,3 +16,12 @@ export function loadOrCreateCompanionSession(
   storage.setItem(COMPANION_SESSION_KEY, created)
   return created
 }
+
+export function replaceCompanionSession(
+  storage: SessionStorage | undefined,
+  createId: () => string
+): string {
+  const created = createId()
+  storage?.setItem(COMPANION_SESSION_KEY, created)
+  return created
+}

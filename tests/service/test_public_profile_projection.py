@@ -14,7 +14,12 @@ def test_public_profile_hides_internal_methodology_and_codes():
             "birth_analysis": {"bazi_text": "示例八字", "numerology_code": "6318"},
             "portrait": {
                 "essence": {
-                    "content": "数字密码 6318、ENFP、九型人格 7w6、SX/SO 与甲木日主的综合摘要"
+                    "content": (
+                        "数字密码 6318、ENFP、九型人格 7w6、SX/SO、7号、完美型、"
+                        "偏财格、戊寅 癸亥 丁亥、INFJ型、荣格八维、Ni、I N F J、"
+                        "SO优先、1998-12-06、生辰、Type 4、social/self-preservation，"
+                        "以及数字学画像2.xlsx的综合摘要"
+                    )
                 },
             },
             "core_traits": {
@@ -35,12 +40,20 @@ def test_public_profile_hides_internal_methodology_and_codes():
 
     assert result is not None
     serialized = str(result).lower()
-    for hidden in ("mbti", "enneagram", "numerology", "数字密码", "数字学", "九型", "八字", "6318", "7w6"):
+    for hidden in (
+        "mbti", "enneagram", "numerology", "数字密码", "数字学", "九型", "八字",
+        "6318", "7w6", "7号", "完美型", "偏财格", "戊寅", "xlsx", "infj",
+        "荣格", "ni", "i n f j", "so优先", "1998-12-06", "生辰", "type 4",
+        "social", "self-preservation",
+    ):
         assert hidden.lower() not in serialized
     assert result["top_traits"][0]["name"] == "互动活跃度"
-    assert result["portrait"]["essence"] == (
-        "初始画像线索、偏好倾向、互动风格 互动风格、关注组合 与出生信息线索的综合摘要"
-    )
+    assert result["top_traits"][0]["level"] == "突出"
+    assert "profile_version" not in result
+    assert "overall_confidence" not in result
+    assert "value" not in result["top_traits"][0]
+    assert "confidence" not in result["top_traits"][0]
+    assert "内部资料" in result["portrait"]["essence"]
     assert result["interaction_preferences"] == {"回复长度": "简短"}
     assert result["current_state"] == {"压力水平": "较低"}
     assert "memories" not in result

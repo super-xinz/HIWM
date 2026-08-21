@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 
 from .config import CompanionSettings
+from .examples import is_showcase_example
 from .llm_client import LLMClient, LLMError
 from .models import ChatRequest, ChatResponse, ProfileUpdateView
 from .profile_client import ProfileEngineClient, ProfileEngineError
@@ -88,8 +89,13 @@ class ChatOrchestrator:
         if request.profile_enabled and self.settings.profile_engine_configured:
             started = time.perf_counter()
             try:
-                profile_data = await self.profile_client.ensure_profile(request.user_id, request_id)
+                if is_showcase_example(request.user_id):
+                    profile_data = await self.profile_client.require_profile(request.user_id)
+                else:
+                    profile_data = await self.profile_client.ensure_profile(request.user_id, request_id)
             except ProfileEngineError as exc:
+                if is_showcase_example(request.user_id):
+                    raise
                 logger.warning("profile read degraded request_id={} error_type={}", request_id, type(exc).__name__)
             timings["profile_read"] = round((time.perf_counter() - started) * 1000, 2)
         history = self.store.messages(request.session_id, limit=24)
@@ -134,6 +140,12 @@ class ChatOrchestrator:
         update_payload = None
         if profile_data is None or not request.profile_enabled:
             update_view = ProfileUpdateView(status="skipped")
+        elif is_showcase_example(request.user_id):
+            update_view = ProfileUpdateView(
+                status="unchanged",
+                profile_version=profile_data.get("profile_version"),
+                summary=["固定示例画像保持不变"],
+            )
         else:
             update_payload = self._update_payload(request, profile_data, history)
             started = time.perf_counter()
@@ -149,7 +161,7 @@ class ChatOrchestrator:
                     status="failed",
                     profile_version=profile_data.get("profile_version"),
                     retryable=exc.retryable,
-                    error=str(exc),
+                    error="画像更新暂时不可用",
                 )
             timings["profile_update"] = round((time.perf_counter() - started) * 1000, 2)
         timings["total"] = round((time.perf_counter() - total_started) * 1000, 2)

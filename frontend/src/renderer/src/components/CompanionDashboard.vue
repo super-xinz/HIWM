@@ -1,5 +1,37 @@
 <template>
   <main class="companion-dashboard">
+    <section class="role-showcase" aria-labelledby="example-role-heading">
+      <header class="showcase-heading">
+        <div>
+          <span>READY-TO-TRY COMPANIONS</span>
+          <h1 id="example-role-heading">选择一种陪伴风格</h1>
+          <p>每个示例都有清晰的互动特点。切换后会自动开启独立的新会话。</p>
+        </div>
+        <small v-if="store.sending">完成当前回复后即可切换</small>
+      </header>
+      <div v-if="!store.examplesReady" class="showcase-loading">正在准备示例角色…</div>
+      <div v-else class="example-grid">
+        <button
+          v-for="(example, index) in store.examples"
+          :key="example.id"
+          type="button"
+          :class="['example-card', { active: example.id === store.userId }]"
+          :disabled="store.sending || store.switchingExample"
+          :aria-pressed="example.id === store.userId"
+          @click="selectExample(example.id)"
+        >
+          <span class="example-index">示例 {{ String(index + 1).padStart(2, '0') }}</span>
+          <strong>{{ example.name }}</strong>
+          <b>{{ example.tagline }}</b>
+          <p>{{ example.description }}</p>
+          <small v-if="example.prompt_suggestions[0]">
+            可以这样开始：{{ example.prompt_suggestions[0] }}
+          </small>
+          <i>{{ example.id === store.userId ? '正在体验' : '选择体验' }}</i>
+        </button>
+      </div>
+    </section>
+
     <aside class="dashboard-panel profile-panel">
       <header class="panel-heading">
         <div>
@@ -8,20 +40,29 @@
         </div>
         <button class="icon-button" title="刷新画像" @click="store.refreshProfile">↻</button>
       </header>
-      <label class="user-field">
-        <span>当前测试用户</span>
-        <input v-model="store.userId" maxlength="256" @change="store.refreshProfile" />
-      </label>
+      <section v-if="activeExample" class="active-example">
+        <span>当前陪伴角色</span>
+        <strong>{{ activeExample.name }}</strong>
+        <small>{{ activeExample.tagline }}</small>
+      </section>
       <template v-if="profile">
-        <div class="profile-version">
-          <strong>v{{ profile.profile_version || '—' }}</strong>
-          <span title="表示当前有效信息的覆盖与稳定程度，不代表对人的准确率">
-            画像成熟度 {{ formatPercent(profile.overall_confidence) }}
-          </span>
+        <div class="profile-readiness">
+          <strong>完整示例</strong>
+          <span>人物特点与沟通偏好已准备</span>
         </div>
         <section v-if="profile.portrait?.essence" class="profile-card emphasis">
           <span>稳定画像摘要</span>
           <p>{{ profile.portrait.essence }}</p>
+        </section>
+        <section v-if="strengths.length" class="profile-card">
+          <span>主要优势</span>
+          <ul class="portrait-list">
+            <li v-for="item in strengths" :key="item">{{ item }}</li>
+          </ul>
+        </section>
+        <section v-if="coreTension" class="profile-card">
+          <span>需要平衡的方向</span>
+          <p>{{ coreTension }}</p>
         </section>
         <section class="profile-card">
           <span>沟通偏好</span>
@@ -40,14 +81,13 @@
             class="trait-row"
           >
             <small>{{ trait.name }}</small>
-            <b>{{ formatPercent(trait.value) }}</b>
+            <b>{{ trait.level }}</b>
           </div>
         </section>
         <section class="profile-card">
           <span>当前状态</span>
           <pre>{{ prettyState }}</pre>
         </section>
-        <small class="updated-at">最近更新：{{ formatDate(profile.updated_at) }}</small>
       </template>
       <div v-else class="empty-state">等待画像引擎返回数据</div>
     </aside>
@@ -64,7 +104,18 @@
         </div>
       </header>
       <div class="demo-notice">
-        系统会在回复前读取画像，并在本轮结束后更新画像。人物画像只用于改善表达与连续性。
+        当前由“{{ activeExample?.name || '陪伴角色' }}”与你对话。人物画像只用于改善表达与连续性。
+      </div>
+      <div v-if="activeExample?.prompt_suggestions.length" class="prompt-suggestions">
+        <span>不知道从哪里开始？试试：</span>
+        <button
+          v-for="prompt in activeExample.prompt_suggestions"
+          :key="prompt"
+          type="button"
+          @click="draft = prompt"
+        >
+          {{ prompt }}
+        </button>
       </div>
       <div ref="messageList" class="message-list">
         <article
@@ -107,47 +158,22 @@
         </div>
         <button class="icon-button" title="刷新状态" @click="store.refreshHealth">↻</button>
       </header>
-      <section class="status-card">
-        <div v-for="(value, key) in health?.services || {}" :key="key" class="service-row">
+      <section class="status-card status-overview">
+        <div class="service-row">
           <span>
-            <i :class="statusClass(value)" />
-            {{ serviceLabel(key) }}
+            <i :class="{ ok: health?.status === 'ok' }" />
+            体验服务
           </span>
-          <b>{{ statusLabel(value) }}</b>
+          <b>{{ health?.status === 'ok' ? '正常' : '正在恢复' }}</b>
         </div>
+        <p>页面仅展示整理后的互动结论，不显示内部计算过程。</p>
       </section>
-      <label class="profile-toggle">
-        <span>
-          <b>画像增强</b>
-          <small>读取并更新人物画像</small>
-        </span>
-        <input v-model="store.profileEnabled" type="checkbox" />
-      </label>
-      <section class="status-card update-card">
-        <span>本轮画像更新</span>
-        <template v-if="store.lastProfileUpdate">
-          <strong :class="`is-${store.lastProfileUpdate.status}`">{{ updateLabel }}</strong>
-          <ul v-if="store.lastProfileUpdate.summary?.length">
-            <li v-for="item in store.lastProfileUpdate.summary" :key="item">{{ item }}</li>
-          </ul>
-          <p v-if="store.lastProfileUpdate.error">{{ store.lastProfileUpdate.error }}</p>
-          <button v-if="store.lastProfileUpdate.retryable" @click="retryUpdate">
-            重试画像更新
-          </button>
-        </template>
-        <em v-else>完成一轮对话后显示结构化更新结果</em>
-      </section>
-      <section class="status-card latency-card">
-        <span>最近调用耗时</span>
-        <dl>
-          <div v-for="(value, key) in store.lastLatency || {}" :key="key">
-            <dt>{{ key }}</dt>
-            <dd>{{ value }} ms</dd>
-          </div>
-        </dl>
+      <section class="status-card example-policy">
+        <span>示例说明</span>
+        <strong>固定、只读、彼此独立</strong>
+        <p>五个示例保持原有特点，不会被其他访问者的对话改写；切换角色会自动开启新会话。</p>
       </section>
       <p v-if="store.error" class="system-error" role="alert">{{ store.error }}</p>
-      <button class="danger-button" @click="resetProfile">重置当前用户画像</button>
     </aside>
   </main>
 </template>
@@ -155,7 +181,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { message } from 'ant-design-vue'
 
 import { useCompanionStore } from '@/store/companion'
 
@@ -163,20 +188,21 @@ const store = useCompanionStore()
 const { profile, health } = storeToRefs(store)
 const draft = ref('')
 const messageList = ref<HTMLElement>()
+const activeExample = computed(() => store.examples.find((item) => item.id === store.userId))
 
 const prettyState = computed(() => {
   const state = profile.value?.current_state || {}
   return Object.keys(state).length ? JSON.stringify(state, null, 2) : '暂无短期状态'
 })
-const updateLabel = computed(
-  () =>
-    ({
-      updated: '画像已更新',
-      unchanged: '画像无变化',
-      failed: '画像更新暂时失败',
-      skipped: '本轮未启用画像',
-    })[store.lastProfileUpdate?.status || 'skipped']
-)
+const strengths = computed(() => {
+  const value = profile.value?.portrait?.strengths
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string')
+  return typeof value === 'string' && value ? [value] : []
+})
+const coreTension = computed(() => {
+  const value = profile.value?.portrait?.core_tension
+  return typeof value === 'string' ? value : ''
+})
 
 watch(
   () => store.messages.map((item) => item.content).join('|'),
@@ -186,39 +212,6 @@ watch(
   }
 )
 
-function formatPercent(value?: number): string {
-  return typeof value === 'number' ? `${Math.round(value * 100)}%` : '—'
-}
-function formatDate(value?: string): string {
-  return value ? new Date(value).toLocaleString('zh-CN') : '暂无记录'
-}
-function statusClass(value: string): string {
-  return ['ok', 'configured'].includes(value) ? 'ok' : 'warn'
-}
-function serviceLabel(key: string): string {
-  return (
-    (
-      {
-        application: 'Chat API',
-        profile_engine: '画像能力服务',
-        llm: '原模型 API',
-        database: '会话数据库',
-      } as Record<string, string>
-    )[key] || key
-  )
-}
-function statusLabel(value: string): string {
-  return (
-    (
-      {
-        ok: '正常',
-        configured: '已配置',
-        unavailable: '不可用',
-        not_configured: '未配置',
-      } as Record<string, string>
-    )[value] || value
-  )
-}
 async function send(): Promise<void> {
   const content = draft.value.trim()
   if (!content) return
@@ -229,22 +222,8 @@ async function clearConversation(): Promise<void> {
   if (!window.confirm('确认清空当前会话吗？此操作不会重置人物画像。')) return
   await store.newSession(true)
 }
-async function resetProfile(): Promise<void> {
-  if (!window.confirm(`确认重置用户 ${store.userId} 的画像和测试会话吗？此操作不可撤销。`)) return
-  try {
-    await store.resetProfile()
-    message.success('人物画像已重置')
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '画像重置失败')
-  }
-}
-async function retryUpdate(): Promise<void> {
-  try {
-    await store.retryProfileUpdate()
-    message.success('画像更新已重试')
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '重试失败')
-  }
+async function selectExample(exampleId: string): Promise<void> {
+  await store.selectExample(exampleId)
 }
 </script>
 
@@ -257,6 +236,122 @@ async function retryUpdate(): Promise<void> {
   gap: 14px;
   color: #193a31;
   background: #eef3f1;
+}
+.role-showcase {
+  grid-column: 1 / -1;
+  padding: 18px;
+  border: 1px solid #cbded7;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 8% 10%, rgba(34, 164, 126, 0.12), transparent 28%),
+    linear-gradient(135deg, #f9fcfb, #edf7f3);
+  box-shadow: 0 10px 28px rgba(38, 73, 62, 0.07);
+}
+.showcase-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.showcase-heading span {
+  color: #238066;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.showcase-heading h1 {
+  margin: 3px 0 2px;
+  color: #173f34;
+  font-size: 22px;
+}
+.showcase-heading p,
+.showcase-heading small {
+  margin: 0;
+  color: #637a72;
+  font-size: 12px;
+}
+.showcase-loading {
+  padding: 24px;
+  color: #6f857e;
+  text-align: center;
+}
+.example-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.example-card {
+  position: relative;
+  min-width: 0;
+  min-height: 190px;
+  padding: 14px;
+  border: 1px solid #d2e1dc;
+  border-radius: 14px;
+  color: #244c41;
+  background: rgba(255, 255, 255, 0.9);
+  text-align: left;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.example-card:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #56a990;
+  box-shadow: 0 8px 20px rgba(30, 104, 81, 0.1);
+}
+.example-card.active {
+  border-color: #148267;
+  background: #f2fbf7;
+  box-shadow: inset 0 0 0 1px rgba(20, 130, 103, 0.15);
+}
+.example-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+.example-card .example-index {
+  display: block;
+  margin-bottom: 8px;
+  color: #7c918a;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.example-card > strong,
+.example-card > b,
+.example-card > small {
+  display: block;
+}
+.example-card > strong {
+  color: #174b3d;
+  font-size: 17px;
+}
+.example-card > b {
+  margin-top: 4px;
+  color: #258066;
+  font-size: 11px;
+}
+.example-card > p {
+  margin: 9px 0;
+  color: #536f66;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.example-card > small {
+  padding-top: 8px;
+  border-top: 1px solid #e5eeeb;
+  color: #788c85;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.example-card > i {
+  display: inline-block;
+  margin-top: 10px;
+  color: #14755c;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
 }
 .dashboard-panel {
   min-height: 0;
@@ -311,20 +406,28 @@ button:hover {
   padding: 0;
   font-size: 18px;
 }
-.user-field {
+.active-example {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   margin-bottom: 12px;
-  color: #6a7e77;
-  font-size: 11px;
+  padding: 11px;
+  border: 1px solid #c9ded6;
+  border-radius: 11px;
+  background: #f3f9f7;
 }
-.user-field input {
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid #d0ddd8;
-  border-radius: 9px;
+.active-example span {
+  color: #758982;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
 }
-.profile-version {
+.active-example strong {
+  color: #17664f;
+}
+.active-example small {
+  color: #617a71;
+}
+.profile-readiness {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -346,6 +449,13 @@ button:hover {
 }
 .profile-card p {
   margin: 8px 0 0;
+  line-height: 1.65;
+}
+.portrait-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #456259;
+  font-size: 12px;
   line-height: 1.65;
 }
 .tag-list {
@@ -380,11 +490,6 @@ button:hover {
   color: #456259;
   font: 11px/1.5 inherit;
 }
-.updated-at {
-  display: block;
-  margin-top: 14px;
-  color: #81918c;
-}
 .chat-heading {
   padding: 18px 18px 0;
 }
@@ -399,6 +504,27 @@ button:hover {
   color: #537068;
   background: #f0f6f4;
   font-size: 12px;
+}
+.prompt-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 18px 4px;
+}
+.prompt-suggestions > span {
+  color: #768a83;
+  font-size: 10px;
+}
+.prompt-suggestions button {
+  max-width: 100%;
+  padding: 5px 8px;
+  overflow: hidden;
+  color: #35685a;
+  background: #f8fbfa;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .message-list {
   flex: 1;
@@ -507,62 +633,21 @@ button:hover {
   background: #20a378;
   box-shadow: 0 0 0 3px rgba(32, 163, 120, 0.12);
 }
-.profile-toggle {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-  padding: 13px;
-  border-radius: 12px;
-  background: #eff7f4;
-}
-.profile-toggle span {
-  display: grid;
-  gap: 3px;
-}
-.profile-toggle small {
-  color: #758982;
-}
-.profile-toggle input {
-  width: 18px;
-  height: 18px;
-  accent-color: #148267;
-}
-.update-card strong {
+.example-policy strong {
   display: block;
   margin: 10px 0 5px;
   color: #148267;
 }
-.update-card strong.is-failed {
-  color: #b5473d;
-}
-.update-card ul {
-  padding-left: 18px;
-  color: #4d6a61;
+.status-overview p,
+.example-policy p {
+  margin: 9px 0 0;
+  color: #657b74;
   font-size: 12px;
+  line-height: 1.6;
 }
-.update-card p,
 .system-error {
   color: #a63d35;
   font-size: 12px;
-}
-.latency-card dl {
-  margin: 8px 0 0;
-}
-.latency-card dl > div {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-}
-.latency-card dt,
-.latency-card dd {
-  margin: 3px 0;
-}
-.danger-button {
-  width: 100%;
-  margin-top: 12px;
-  color: #a13d35;
-  border-color: #e4b8b4;
 }
 .empty-state {
   padding: 30px 10px;
@@ -570,6 +655,9 @@ button:hover {
   text-align: center;
 }
 @media (max-width: 1050px) {
+  .example-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .companion-dashboard {
     grid-template-columns: 260px 1fr;
   }
@@ -584,6 +672,24 @@ button:hover {
   }
   .status-panel {
     grid-column: auto;
+  }
+  .role-showcase {
+    padding: 14px;
+  }
+  .showcase-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .example-grid {
+    display: flex;
+    margin-right: -14px;
+    padding-right: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+  .example-card {
+    flex: 0 0 min(82vw, 290px);
+    scroll-snap-align: start;
   }
   .profile-panel,
   .status-panel {

@@ -22,6 +22,8 @@ def _json(value: object, max_chars: int) -> str:
 
 
 def _trait_level(value: object) -> str:
+    if isinstance(value, str) and value:
+        return value
     if not isinstance(value, (int, float)):
         return "待观察"
     if value < 0.35:
@@ -80,7 +82,7 @@ def profile_context(profile_data: dict | None, max_chars: int) -> str:
                 {
                     "group": item.get("group"),
                     "name": item.get("name"),
-                    "level": _trait_level(item.get("value")),
+                    "level": _trait_level(item.get("level")),
                 }
                 for item in public.get("top_traits", [])
             ],

@@ -92,6 +92,14 @@ class ProfileEngineClient:
             "GET", f"/v1/profiles/{user_id}", allow_not_found=True
         )
 
+    async def require_profile(self, user_id: str) -> dict:
+        current = await self.get_profile(user_id)
+        if current is None:
+            raise ProfileEngineError(
+                "示例画像尚未准备好", status=404, retryable=False
+            )
+        return current
+
     async def ensure_profile(self, user_id: str, request_id: str) -> dict:
         current = await self.get_profile(user_id)
         if current is not None:
@@ -202,22 +210,73 @@ def _presentation_text(value: object) -> object:
     if isinstance(value, str):
         text = re.sub(r"数字(?:密码|学)(?:\s*[0-9]{4})?", "初始画像线索", value, flags=re.IGNORECASE)
         text = re.sub(r"生命灵数|生命数|生日数|天赋数", "初始画像线索", text)
-        text = re.sub(r"MBTI", "偏好倾向", text, flags=re.IGNORECASE)
-        text = re.sub(r"\b[IE][NS][FT][JP](?:-[AT])?\b", "偏好倾向", text, flags=re.IGNORECASE)
+        text = re.sub(r"(?<!\d)(?:19|20)\d{2}-\d{2}-\d{2}(?!\d)", "出生信息线索", text)
+        text = re.sub(r"(?<!\d)\d{4}(?!\d)", "初始画像线索", text)
+        text = re.sub(r"MBTI|荣格八维", "偏好倾向", text, flags=re.IGNORECASE)
+        text = re.sub(
+            r"(?<![A-Za-z])[IE][NS][FT][JP](?:-[AT])?(?:型)?(?![A-Za-z])",
+            "偏好倾向",
+            text,
+            flags=re.IGNORECASE,
+        )
+        text = re.sub(
+            r"(?<![A-Za-z])[IE]\s+[NS]\s+[FT]\s+[JP](?![A-Za-z])",
+            "偏好倾向",
+            text,
+            flags=re.IGNORECASE,
+        )
+        text = re.sub(
+            r"(?<![A-Za-z])(?:Ni|Ne|Si|Se|Ti|Te|Fi|Fe)(?![A-Za-z])",
+            "偏好维度",
+            text,
+            flags=re.IGNORECASE,
+        )
+        text = re.sub(r"\b(?:I/E|S/N|T/F|J/P)\b", "偏好维度", text, flags=re.IGNORECASE)
         text = re.sub(r"九型(?:人格|互动画像|画像|互动)?", "互动风格", text)
         text = re.sub(r"\b[1-9]w[1-9]\b", "互动风格", text, flags=re.IGNORECASE)
+        text = re.sub(r"[1-9](?:号|型)(?:人格)?", "互动风格", text)
+        text = re.sub(r"(?<![A-Za-z])Type\s*[1-9](?!\d)", "互动风格", text, flags=re.IGNORECASE)
+        text = re.sub(
+            r"完美型|助人型|成就型|自我型|理智型|忠诚型|活跃型|领袖型|和平型",
+            "互动风格",
+            text,
+        )
         text = re.sub(
             r"\b(?:SX|SP|SO)/(?:SX|SP|SO)\b",
             "关注组合",
             text,
             flags=re.IGNORECASE,
         )
-        text = re.sub(r"八字|命理", "出生信息线索", text)
+        text = re.sub(
+            r"(?<![A-Za-z])(?:SX|SP|SO)(?:优先)?(?![A-Za-z])",
+            "关注倾向",
+            text,
+            flags=re.IGNORECASE,
+        )
+        text = re.sub(
+            r"\b(?:social|self-preservation|sexual)(?:\s+instinct)?\b",
+            "关注倾向",
+            text,
+            flags=re.IGNORECASE,
+        )
+        text = re.sub(r"八字|命理|紫微(?:斗数)?|生辰", "出生信息线索", text)
+        text = re.sub(
+            r"偏财格|七杀格|伤官格|正官格|正财格|食神格|正印格|偏印格|建禄格|羊刃格",
+            "出生信息线索",
+            text,
+        )
+        text = re.sub(
+            r"[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]"
+            r"(?:\s+[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]){2,3}",
+            "出生信息线索",
+            text,
+        )
         text = re.sub(
             r"[甲乙丙丁戊己庚辛壬癸]?[木火土金水]?日主|身强|身弱|四柱|天干|地支|五行|命盘",
             "出生信息线索",
             text,
         )
+        text = re.sub(r"[^\s，。；：、]+\.xlsx", "内部资料", text, flags=re.IGNORECASE)
         text = re.sub(r"enneagram", "interaction-style", text, flags=re.IGNORECASE)
         text = re.sub(r"numerology", "initial-signal", text, flags=re.IGNORECASE)
         return _VALUE_LABELS.get(text.lower(), text)
@@ -252,6 +311,14 @@ def _public_state(value: object) -> dict:
     return result
 
 
+def _public_trait_level(value: float) -> str:
+    if value >= 0.7:
+        return "突出"
+    if value <= 0.35:
+        return "相对克制"
+    return "均衡"
+
+
 def public_profile(data: dict | None) -> dict | None:
     if not data or not isinstance(data.get("profile"), dict):
         return None
@@ -268,14 +335,14 @@ def public_profile(data: dict | None) -> dict | None:
                 traits.append({
                     "group": _GROUP_LABELS.get(group_name, "综合特征"),
                     "name": _TRAIT_LABELS.get(name, "画像特征"),
-                    "value": value["value"],
-                    "confidence": value.get("confidence"),
+                    "level": _public_trait_level(value["value"]),
+                    "_rank": value.get("confidence") or 0,
                 })
-    traits.sort(key=lambda item: item.get("confidence") or 0, reverse=True)
+    traits.sort(key=lambda item: item["_rank"], reverse=True)
+    for item in traits:
+        item.pop("_rank", None)
     return {
-        "profile_version": data.get("profile_version"),
         "updated_at": meta.get("updated_at"),
-        "overall_confidence": meta.get("overall_confidence"),
         "portrait": {
             key: _presentation_text(value.get("content") if isinstance(value, dict) else value)
             for key, value in portrait.items()

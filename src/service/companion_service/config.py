@@ -35,6 +35,7 @@ class CompanionSettings:
     access_cookie_secure: bool
     profile_context_max_chars: int
     git_commit_sha: str
+    chat_rate_limit_per_minute: int = 30
 
     @classmethod
     def from_env(cls) -> "CompanionSettings":
@@ -74,6 +75,9 @@ class CompanionSettings:
                 "PROFILE_CONTEXT_MAX_CHARS", 8_000, 1_000
             ),
             git_commit_sha=os.getenv("GIT_COMMIT_SHA", "unknown")[:64],
+            chat_rate_limit_per_minute=_integer(
+                "DEMO_CHAT_RATE_LIMIT_PER_MINUTE", 30
+            ),
         )
 
     @property

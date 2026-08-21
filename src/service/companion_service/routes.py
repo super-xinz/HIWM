@@ -1,18 +1,27 @@
 from __future__ import annotations
 
 import json
-import uuid
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 
 from .access import AccessManager
 from .config import CompanionSettings
+from .examples import (
+    DEFAULT_EXAMPLE_ID,
+    SHOWCASE_BY_ID,
+    SHOWCASE_EXAMPLES,
+    public_profile_for_example,
+)
 from .llm_client import LLMError
-from .models import AccessLoginRequest, ChatRequest, ResetRequest
+from .models import AccessLoginRequest, ChatRequest
 from .orchestrator import ChatOrchestrator
-from .profile_client import ProfileEngineClient, ProfileEngineError, public_profile
-from .session_store import DuplicateTurnError, SessionStore
+from .profile_client import (
+    ProfileEngineClient,
+    ProfileEngineError,
+    _presentation_text,
+)
+from .session_store import DuplicateTurnError, SessionAccessError, SessionStore
 
 
 def register_companion_api(
@@ -33,6 +42,11 @@ def register_companion_api(
         settings, store, profile_client=profile_client
     )
     access = AccessManager(settings)
+    default_example_id = (
+        settings.default_user_id
+        if settings.default_user_id in SHOWCASE_BY_ID
+        else DEFAULT_EXAMPLE_ID
+    )
     app.state.companion_api_registered = True
     app.state.companion_settings = settings
     app.state.companion_store = store
@@ -42,23 +56,36 @@ def register_companion_api(
         "/api/v1/runtime",
         "/webrtc",
     )
+    no_store_prefixes = (*protected_prefixes, "/api/v1/access")
+
+    def private_no_store(response: Response) -> Response:
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["Pragma"] = "no-cache"
+        vary = response.headers.get("Vary", "")
+        values = {item.strip() for item in vary.split(",") if item.strip()}
+        values.add("Cookie")
+        response.headers["Vary"] = ", ".join(sorted(values))
+        return response
 
     @app.middleware("http")
     async def companion_access_guard(request: Request, call_next):
         if request.url.path.startswith(protected_prefixes) and not access.authorized(request):
-            return Response(
+            return private_no_store(Response(
                 content=json.dumps({"detail": "请先输入 Demo 访问口令"}, ensure_ascii=False),
                 status_code=401,
                 media_type="application/json",
-            )
-        return await call_next(request)
+            ))
+        response = await call_next(request)
+        if request.url.path.startswith(no_store_prefixes):
+            return private_no_store(response)
+        return response
 
     @app.get("/api/v1/access/status", tags=["access"])
     async def access_status(request: Request) -> dict:
         return {
             "authorized": access.authorized(request),
             "required": access.required,
-            "default_user_id": settings.default_user_id,
+            "default_example_id": default_example_id,
         }
 
     @app.post("/api/v1/access/login", tags=["access"])
@@ -70,6 +97,8 @@ def register_companion_api(
 
     @app.post("/api/v1/access/logout", tags=["access"])
     async def access_logout(request: Request, response: Response) -> dict:
+        if access.authorized(request):
+            store.clear_owner(access.subject(request))
         access.logout(request, response)
         return {"authorized": False}
 
@@ -78,23 +107,34 @@ def register_companion_api(
         if settings.profile_engine_configured:
             profile_state = "ok" if await profile_client.health_check() else "unavailable"
         database_state = "ok" if store.health_check() else "unavailable"
-        services = {
-            "application": "ok",
-            "profile_engine": profile_state,
-            "llm": "configured" if settings.llm_configured else "not_configured",
-            "database": database_state,
-        }
         healthy = (
             profile_state == "ok"
             and settings.llm_configured
             and database_state == "ok"
             and (access.required or not settings.access_cookie_secure)
         )
+        return {"status": "ok" if healthy else "degraded"}
+
+    def public_chat_response(value: object) -> dict:
+        raw = value.model_dump(mode="json") if hasattr(value, "model_dump") else value
+        if not isinstance(raw, dict):
+            return {"reply": "", "cached": False}
+        reply = _presentation_text(raw.get("reply", ""))
         return {
-            "status": "ok" if healthy else "degraded",
-            "services": services,
-            "version": settings.git_commit_sha,
-            "access_protection": "configured" if access.required else "disabled",
+            "reply": reply if isinstance(reply, str) else "",
+            "cached": raw.get("cached") is True,
+        }
+
+    def public_message(item: dict) -> dict:
+        role = item.get("role")
+        content = item.get("content", "")
+        if role == "assistant":
+            content = _presentation_text(content)
+        return {
+            "turn_id": item.get("turn_id"),
+            "role": role,
+            "content": content if isinstance(content, str) else "",
+            "created_at": item.get("created_at"),
         }
 
     @app.get("/api/health", tags=["system"])
@@ -105,25 +145,69 @@ def register_companion_api(
     async def companion_health() -> dict:
         return await health_payload()
 
+    @app.get("/api/v1/companion/examples", tags=["companion"])
+    async def companion_examples() -> dict:
+        return {
+            "default_example_id": default_example_id,
+            "examples": [item.public_view() for item in SHOWCASE_EXAMPLES],
+        }
+
+    def require_showcase_example(user_id: str) -> None:
+        if user_id not in SHOWCASE_BY_ID:
+            raise HTTPException(status_code=404, detail="示例角色不存在")
+
     @app.post("/api/v1/companion/chat", tags=["companion"])
-    async def companion_chat(body: ChatRequest) -> dict:
+    async def companion_chat(body: ChatRequest, request: Request) -> dict:
+        require_showcase_example(body.user_id)
+        access.check_rate(request, "chat", settings.chat_rate_limit_per_minute)
+        body = body.model_copy(update={"profile_enabled": True})
         try:
-            return (await orchestrator.chat(body)).model_dump(mode="json")
+            store.bind_session(body.session_id, access.subject(request), body.user_id)
+        except SessionAccessError as exc:
+            raise HTTPException(status_code=404, detail="会话不存在") from exc
+        try:
+            return public_chat_response(await orchestrator.chat(body))
         except DuplicateTurnError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except LLMError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
+            raise HTTPException(status_code=502, detail="回复生成暂时不可用") from exc
+        except ProfileEngineError as exc:
+            status = 404 if exc.status == 404 else 503
+            detail = "示例画像尚未准备好" if status == 404 else "示例画像暂时不可用"
+            raise HTTPException(status_code=status, detail=detail) from exc
 
     @app.post("/api/v1/companion/chat/stream", tags=["companion"])
-    async def companion_chat_stream(body: ChatRequest) -> StreamingResponse:
+    async def companion_chat_stream(body: ChatRequest, request: Request) -> StreamingResponse:
+        require_showcase_example(body.user_id)
+        access.check_rate(request, "chat", settings.chat_rate_limit_per_minute)
+        body = body.model_copy(update={"profile_enabled": True})
+        try:
+            store.bind_session(body.session_id, access.subject(request), body.user_id)
+        except SessionAccessError as exc:
+            raise HTTPException(status_code=404, detail="会话不存在") from exc
+
         async def events():
             try:
                 async for event in orchestrator.stream_chat(body):
-                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                    event_type = event.get("type")
+                    if event_type == "meta":
+                        safe_meta = {"type": "meta", "cached": event.get("cached") is True}
+                        yield f"data: {json.dumps(safe_meta, ensure_ascii=False)}\n\n"
+                    elif event_type == "delta":
+                        continue
+                    elif event_type == "final":
+                        response = public_chat_response(event.get("response"))
+                        safe_reply = response.get("reply", "")
+                        if safe_reply:
+                            yield f"data: {json.dumps({'type': 'delta', 'content': safe_reply}, ensure_ascii=False)}\n\n"
+                        yield f"data: {json.dumps({'type': 'final', 'response': response}, ensure_ascii=False)}\n\n"
             except DuplicateTurnError as exc:
                 yield f"data: {json.dumps({'type': 'error', 'code': 'duplicate_turn', 'message': str(exc)}, ensure_ascii=False)}\n\n"
-            except LLMError as exc:
-                yield f"data: {json.dumps({'type': 'error', 'code': 'llm_unavailable', 'message': str(exc)}, ensure_ascii=False)}\n\n"
+            except LLMError:
+                yield f"data: {json.dumps({'type': 'error', 'code': 'generation_unavailable', 'message': '回复生成暂时不可用'}, ensure_ascii=False)}\n\n"
+            except ProfileEngineError as exc:
+                message = "示例画像尚未准备好" if exc.status == 404 else "示例画像暂时不可用"
+                yield f"data: {json.dumps({'type': 'error', 'code': 'example_unavailable', 'message': message}, ensure_ascii=False)}\n\n"
             except Exception:
                 yield f"data: {json.dumps({'type': 'error', 'code': 'stream_interrupted', 'message': '流式连接意外中断，请重试'}, ensure_ascii=False)}\n\n"
 
@@ -135,45 +219,41 @@ def register_companion_api(
 
     @app.get("/api/v1/companion/profile/{user_id}", tags=["companion"])
     async def companion_profile(user_id: str) -> dict:
+        require_showcase_example(user_id)
         if not settings.profile_engine_configured:
             raise HTTPException(status_code=503, detail="画像引擎尚未配置")
         try:
-            data = await profile_client.ensure_profile(user_id, uuid.uuid4().hex)
-            return {"profile": public_profile(data)}
+            await profile_client.require_profile(user_id)
+            return {"profile": public_profile_for_example(user_id)}
         except ProfileEngineError as exc:
             status = exc.status if exc.status and 400 <= exc.status < 600 else 503
-            raise HTTPException(status_code=status, detail=str(exc)) from exc
-
-    @app.post("/api/v1/companion/profile/{user_id}/reset", tags=["companion"])
-    async def companion_reset_profile(user_id: str, body: ResetRequest) -> dict:
-        try:
-            result = await profile_client.reset_profile(user_id, uuid.uuid4().hex)
-            store.clear_user(user_id)
-            return {"reset": True, "profile": public_profile(result)}
-        except ProfileEngineError as exc:
-            status = exc.status if exc.status and 400 <= exc.status < 600 else 503
-            raise HTTPException(status_code=status, detail=str(exc)) from exc
-
-    @app.post(
-        "/api/v1/companion/sessions/{session_id}/turns/{turn_id}/profile-update:retry",
-        tags=["companion"],
-    )
-    async def retry_profile_update(session_id: str, turn_id: str) -> dict:
-        try:
-            return (
-                await orchestrator.retry_profile_update(session_id, turn_id)
-            ).model_dump(mode="json")
-        except ProfileEngineError as exc:
-            status = exc.status if exc.status and 400 <= exc.status < 600 else 503
-            raise HTTPException(status_code=status, detail=str(exc)) from exc
+            detail = "示例画像尚未准备好" if status == 404 else "示例画像暂时不可用"
+            raise HTTPException(status_code=status, detail=detail) from exc
 
     @app.get("/api/v1/companion/sessions/{session_id}/messages", tags=["companion"])
     async def session_messages(
-        session_id: str, limit: int = Query(default=100, ge=1, le=200)
+        session_id: str,
+        request: Request,
+        limit: int = Query(default=100, ge=1, le=200),
     ) -> dict:
-        return {"session_id": session_id, "messages": store.messages(session_id, limit)}
+        try:
+            authorized = store.authorize_session(session_id, access.subject(request))
+        except SessionAccessError as exc:
+            raise HTTPException(status_code=404, detail="会话不存在") from exc
+        if not authorized:
+            return {"session_id": session_id, "messages": []}
+        return {
+            "session_id": session_id,
+            "messages": [public_message(item) for item in store.messages(session_id, limit)],
+        }
 
     @app.delete("/api/v1/companion/sessions/{session_id}", tags=["companion"])
-    async def clear_session(session_id: str) -> dict:
+    async def clear_session(session_id: str, request: Request) -> dict:
+        try:
+            authorized = store.authorize_session(session_id, access.subject(request))
+        except SessionAccessError as exc:
+            raise HTTPException(status_code=404, detail="会话不存在") from exc
+        if not authorized:
+            return {"session_id": session_id, "cleared": False}
         store.clear_session(session_id)
         return {"session_id": session_id, "cleared": True}

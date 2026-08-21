@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import hashlib
 import secrets
 import time
 from collections import defaultdict, deque
@@ -24,6 +25,7 @@ class AccessManager:
         self.settings = settings
         self.sessions: dict[str, AccessSession] = {}
         self.failures: dict[str, deque[float]] = defaultdict(deque)
+        self.actions: dict[str, deque[float]] = defaultdict(deque)
 
     @property
     def required(self) -> bool:
@@ -46,6 +48,24 @@ class AccessManager:
     def require(self, request: Request) -> None:
         if not self.authorized(request):
             raise HTTPException(status_code=401, detail="请先输入 Demo 访问口令")
+
+    def subject(self, request: Request) -> str:
+        """Return a non-secret, per-login owner id for isolating demo sessions."""
+        if not self.required:
+            return "unprotected-demo"
+        self.require(request)
+        token = request.cookies.get(COOKIE_NAME, "")
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    def check_rate(self, request: Request, action: str, limit: int) -> None:
+        now = time.time()
+        key = f"{self.subject(request)}:{action}"
+        events = self.actions[key]
+        while events and events[0] < now - 60:
+            events.popleft()
+        if len(events) >= limit:
+            raise HTTPException(status_code=429, detail="操作过于频繁，请稍后再试")
+        events.append(now)
 
     def login(self, request: Request, response: Response, code: str) -> None:
         if not self.required:
@@ -77,5 +97,8 @@ class AccessManager:
 
     def logout(self, request: Request, response: Response) -> None:
         token = request.cookies.get(COOKIE_NAME, "")
+        owner = hashlib.sha256(token.encode("utf-8")).hexdigest() if token else ""
         self.sessions.pop(token, None)
+        for key in [key for key in self.actions if key.startswith(f"{owner}:")]:
+            self.actions.pop(key, None)
         response.delete_cookie(COOKIE_NAME, path="/")

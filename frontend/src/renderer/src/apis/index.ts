@@ -28,6 +28,10 @@ export function companionHealth(): Promise<Response> {
   return fetch('/api/v1/companion/health')
 }
 
+export function companionExamples(): Promise<Response> {
+  return fetch('/api/v1/companion/examples')
+}
+
 export function companionProfile(userId: string): Promise<Response> {
   return fetch(`/api/v1/companion/profile/${encodeURIComponent(userId)}`)
 }
@@ -52,21 +56,6 @@ export function clearCompanionSession(sessionId: string): Promise<Response> {
   return fetch(`/api/v1/companion/sessions/${encodeURIComponent(sessionId)}`, {
     method: 'DELETE',
   })
-}
-
-export function resetCompanionProfile(userId: string): Promise<Response> {
-  return fetch(`/api/v1/companion/profile/${encodeURIComponent(userId)}/reset`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ confirm: true }),
-  })
-}
-
-export function retryCompanionProfileUpdate(sessionId: string, turnId: string): Promise<Response> {
-  return fetch(
-    `/api/v1/companion/sessions/${encodeURIComponent(sessionId)}/turns/${encodeURIComponent(turnId)}/profile-update:retry`,
-    { method: 'POST' }
-  )
 }
 
 export function webrtcOffer(body: Record<string, unknown>): Promise<Response> {

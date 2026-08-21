@@ -6,58 +6,35 @@ import {
   accessStatus,
   clearCompanionSession,
   companionChatStream,
+  companionExamples,
   companionHealth,
   companionMessages,
   companionProfile,
-  resetCompanionProfile,
-  retryCompanionProfileUpdate,
 } from '@/apis'
 import { extractSseFrames } from '@/utils/sse'
-import { COMPANION_SESSION_KEY, loadOrCreateCompanionSession } from '@/utils/companionSession'
+import { loadOrCreateCompanionSession, replaceCompanionSession } from '@/utils/companionSession'
+import { type CompanionExample, parseCompanionExampleCatalog } from '@/utils/companionExamples'
+
+export type { CompanionExample } from '@/utils/companionExamples'
 
 export type CompanionMessage = {
-  session_id: string
-  user_id: string
   turn_id: string
   role: 'user' | 'assistant'
   content: string
   created_at: string
-  model?: string | null
-  profile_version?: number | null
-  request_id: string
   pending?: boolean
   failed?: boolean
 }
 
 export type CompanionProfile = {
-  profile_version?: number
-  updated_at?: string
-  overall_confidence?: number
   portrait?: Record<string, string | string[] | null>
-  top_traits?: Array<{ group: string; name: string; value: number; confidence?: number }>
+  top_traits?: Array<{ group: string; name: string; level: string }>
   interaction_preferences?: Record<string, unknown>
   current_state?: Record<string, unknown>
 }
 
 type Health = {
   status: 'ok' | 'degraded'
-  services: Record<string, string>
-  version: string
-  access_protection: string
-}
-
-type ProfileUpdate = {
-  status: 'updated' | 'unchanged' | 'failed' | 'skipped'
-  profile_version?: number | null
-  summary: string[]
-  retryable: boolean
-  error?: string | null
-}
-
-type StreamFinalResponse = {
-  model?: string
-  profile_update?: ProfileUpdate
-  latency_ms?: Record<string, number>
 }
 
 type CompanionState = {
@@ -65,16 +42,16 @@ type CompanionState = {
   accessRequired: boolean
   accessReady: boolean
   userId: string
+  examples: CompanionExample[]
+  defaultExampleId: string
+  examplesReady: boolean
+  switchingExample: boolean
   sessionId: string
   messages: CompanionMessage[]
   profile: CompanionProfile | null
   health: Health | null
-  profileEnabled: boolean
   sending: boolean
   error: string | null
-  lastProfileUpdate: ProfileUpdate | null
-  lastTurnId: string | null
-  lastLatency: Record<string, number> | null
   abortController: AbortController | null
 }
 
@@ -105,17 +82,17 @@ export const useCompanionStore = defineStore('companionStore', {
     authorized: false,
     accessRequired: true,
     accessReady: false,
-    userId: 'demo-xu',
+    userId: 'showcase-anchor',
+    examples: [],
+    defaultExampleId: 'showcase-anchor',
+    examplesReady: false,
+    switchingExample: false,
     sessionId: loadSession(),
     messages: [],
     profile: null,
     health: null,
-    profileEnabled: true,
     sending: false,
     error: null,
-    lastProfileUpdate: null,
-    lastTurnId: null,
-    lastLatency: null,
     abortController: null,
   }),
   actions: {
@@ -125,7 +102,7 @@ export const useCompanionStore = defineStore('companionStore', {
         const body = await response.json()
         this.authorized = body.authorized === true
         this.accessRequired = body.required === true
-        if (typeof body.default_user_id === 'string') this.userId = body.default_user_id
+        if (typeof body.default_example_id === 'string') this.userId = body.default_example_id
         if (this.authorized) await this.refreshAll()
       } catch {
         this.error = '无法连接 HIWM 服务，请检查服务是否已启动'
@@ -148,13 +125,62 @@ export const useCompanionStore = defineStore('companionStore', {
 
     async logout(): Promise<void> {
       await accessLogout()
+      await this.newSession(false)
       this.authorized = false
       this.messages = []
       this.profile = null
     },
 
     async refreshAll(): Promise<void> {
+      await this.refreshExamples()
       await Promise.all([this.refreshHealth(), this.refreshProfile(), this.loadMessages()])
+    },
+
+    async refreshExamples(): Promise<void> {
+      try {
+        const response = await companionExamples()
+        if (response.status === 401) {
+          this.authorized = false
+          return
+        }
+        if (!response.ok) throw new Error('示例角色加载失败')
+        const catalog = parseCompanionExampleCatalog(await response.json(), this.userId)
+        this.examples = catalog.examples
+        this.defaultExampleId = catalog.defaultExampleId
+        if (!this.examples.some((item) => item.id === this.userId)) {
+          this.userId = this.defaultExampleId
+        }
+      } catch (error) {
+        const catalog = parseCompanionExampleCatalog(null, this.userId)
+        this.examples = catalog.examples
+        this.defaultExampleId = catalog.defaultExampleId
+        this.error = error instanceof Error ? error.message : '示例角色加载失败'
+      } finally {
+        this.examplesReady = true
+      }
+    },
+
+    async selectExample(exampleId: string): Promise<void> {
+      if (
+        this.sending ||
+        this.switchingExample ||
+        exampleId === this.userId ||
+        !this.examples.some((item) => item.id === exampleId)
+      ) {
+        return
+      }
+      this.switchingExample = true
+      this.userId = exampleId
+      this.profile = null
+      this.error = null
+      try {
+        await this.newSession(false)
+        await this.refreshProfile()
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : '示例角色切换失败'
+      } finally {
+        this.switchingExample = false
+      }
     },
 
     async refreshHealth(): Promise<void> {
@@ -167,7 +193,6 @@ export const useCompanionStore = defineStore('companionStore', {
     },
 
     async refreshProfile(): Promise<void> {
-      if (!this.profileEnabled) return
       const response = await companionProfile(this.userId)
       if (response.ok) {
         const body = await response.json()
@@ -177,6 +202,14 @@ export const useCompanionStore = defineStore('companionStore', {
 
     async loadMessages(): Promise<void> {
       const response = await companionMessages(this.sessionId)
+      if (response.status === 401) {
+        this.authorized = false
+        return
+      }
+      if (response.status === 403) {
+        await this.newSession(false)
+        return
+      }
       if (response.ok) {
         const body = await response.json()
         this.messages = Array.isArray(body.messages) ? body.messages : []
@@ -187,31 +220,23 @@ export const useCompanionStore = defineStore('companionStore', {
       const text = message.trim()
       if (!text || this.sending) return
       const turnId = createId('turn')
-      const requestId = createId('request')
       const createdAt = new Date().toISOString()
       this.messages.push({
-        session_id: this.sessionId,
-        user_id: this.userId,
         turn_id: turnId,
         role: 'user',
         content: text,
         created_at: createdAt,
-        request_id: requestId,
       })
       const assistant: CompanionMessage = {
-        session_id: this.sessionId,
-        user_id: this.userId,
         turn_id: turnId,
         role: 'assistant',
         content: '',
         created_at: createdAt,
-        request_id: requestId,
         pending: true,
       }
       this.messages.push(assistant)
       this.sending = true
       this.error = null
-      this.lastTurnId = turnId
       const controller = new AbortController()
       this.abortController = controller
       try {
@@ -221,7 +246,6 @@ export const useCompanionStore = defineStore('companionStore', {
             session_id: this.sessionId,
             turn_id: turnId,
             message: text,
-            profile_enabled: this.profileEnabled,
           },
           controller.signal
         )
@@ -237,9 +261,7 @@ export const useCompanionStore = defineStore('companionStore', {
           const parsed = extractSseFrames(buffer)
           buffer = parsed.rest
           for (const event of parsed.events) {
-            if (event.type === 'meta' && typeof event.request_id === 'string') {
-              assistant.request_id = event.request_id
-            } else if (event.type === 'delta' && typeof event.content === 'string') {
+            if (event.type === 'delta' && typeof event.content === 'string') {
               assistant.content += event.content
               this.messages = [...this.messages]
             } else if (
@@ -247,12 +269,7 @@ export const useCompanionStore = defineStore('companionStore', {
               event.response &&
               typeof event.response === 'object'
             ) {
-              const result = event.response as StreamFinalResponse
               assistant.pending = false
-              assistant.model = result.model
-              assistant.profile_version = result.profile_update?.profile_version
-              this.lastProfileUpdate = result.profile_update || null
-              this.lastLatency = result.latency_ms || null
             } else if (event.type === 'error') {
               throw new Error(typeof event.message === 'string' ? event.message : '生成失败')
             }
@@ -283,30 +300,11 @@ export const useCompanionStore = defineStore('companionStore', {
 
     async newSession(clearCurrent = false): Promise<void> {
       if (clearCurrent) await clearCompanionSession(this.sessionId)
-      this.sessionId = createId('session')
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(COMPANION_SESSION_KEY, this.sessionId)
-      }
+      this.sessionId = replaceCompanionSession(
+        typeof localStorage === 'undefined' ? undefined : localStorage,
+        () => createId('session')
+      )
       this.messages = []
-      this.lastProfileUpdate = null
-      this.lastTurnId = null
-    },
-
-    async resetProfile(): Promise<void> {
-      const response = await resetCompanionProfile(this.userId)
-      if (!response.ok) throw new Error(await errorMessage(response, '画像重置失败'))
-      const body = await response.json()
-      this.profile = body.profile
-      await this.newSession(false)
-    },
-
-    async retryProfileUpdate(): Promise<void> {
-      if (!this.lastTurnId) return
-      const response = await retryCompanionProfileUpdate(this.sessionId, this.lastTurnId)
-      if (!response.ok) throw new Error(await errorMessage(response, '画像更新重试失败'))
-      const body = await response.json()
-      this.lastProfileUpdate = body.profile_update
-      await this.refreshProfile()
     },
   },
 })

@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from project_identity import API_VERSION, PROJECT_NAME, PROJECT_SLUG, PROJECT_VERSION
+from project_identity import PROJECT_NAME, PROJECT_VERSION
 from service.companion_service import register_companion_api
 from service.companion_service.config import CompanionSettings
 
@@ -36,16 +36,6 @@ def create_app(settings: CompanionSettings | None = None) -> FastAPI:
         openapi_url=None,
     )
     register_companion_api(app, settings=settings)
-
-    @app.get("/version")
-    async def version() -> dict:
-        return {
-            "name": PROJECT_NAME,
-            "slug": PROJECT_SLUG,
-            "version": PROJECT_VERSION,
-            "api_version": API_VERSION,
-            "runtime": "companion",
-        }
 
     @app.get("/liveness")
     async def liveness() -> dict:
